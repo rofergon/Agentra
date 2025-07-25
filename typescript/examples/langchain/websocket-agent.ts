@@ -79,6 +79,10 @@ class HederaWebSocketAgent {
       CREATE_TOPIC_TOOL,
       SUBMIT_TOPIC_MESSAGE_TOOL,
       GET_HBAR_BALANCE_QUERY_TOOL,
+      TRANSFER_HBAR_TOOL,
+      GET_ACCOUNT_QUERY_TOOL,
+      GET_ACCOUNT_TOKEN_BALANCES_QUERY_TOOL,
+      GET_TOPIC_MESSAGES_QUERY_TOOL,
     } = hederaTools;
 
     // Toolkit de Hedera en modo RETURN_BYTES
@@ -90,6 +94,10 @@ class HederaWebSocketAgent {
           SUBMIT_TOPIC_MESSAGE_TOOL,
           CREATE_FUNGIBLE_TOKEN_TOOL,
           GET_HBAR_BALANCE_QUERY_TOOL,
+          TRANSFER_HBAR_TOOL,
+          GET_ACCOUNT_QUERY_TOOL,
+          GET_ACCOUNT_TOKEN_BALANCES_QUERY_TOOL,
+          GET_TOPIC_MESSAGES_QUERY_TOOL,
         ],
         context: {
           mode: AgentMode.RETURN_BYTES,
