@@ -26,7 +26,18 @@ export class HederaMirrornodeServiceDefaultImpl implements IHederaMirrornodeServ
   async getAccount(accountId: string): Promise<AccountResponse> {
     const url = `${this.baseUrl}/accounts/${accountId}`;
     const response = await fetch(url);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch account ${accountId}: ${response.status} ${response.statusText}`);
+    }
+    
     const data: AccountAPIResponse = await response.json();
+    
+    // ✅ FIX: Validate that data.key exists before accessing data.key.key
+    if (!data.key || !data.key.key) {
+      throw new Error(`Account ${accountId} does not have a public key available in the mirror node`);
+    }
+    
     return {
       accountId: data.accountId,
       accountPublicKey: data.key.key,
