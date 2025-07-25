@@ -5,16 +5,20 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "langchain:structured-chat-agent": "ts-node structured-chat-agent.ts",
     "langchain:tool-calling-agent": "ts-node tool-calling-agent.ts",
-    "langchain:return-bytes-tool-calling-agent": "ts-node return-bytes-tool-calling-agent.ts"
+    "langchain:return-bytes-tool-calling-agent": "ts-node return-bytes-tool-calling-agent.ts",
+    "start:websocket": "ts-node websocket-agent.ts",
+    "test:websocket": "node websocket-test-client.js"
   },
   "dependencies": {
     "@hashgraph/sdk": "^2.68.0",
     "@langchain/core": "^0.3.66",
     "@langchain/openai": "^0.6.2",
+    "@types/ws": "^8.18.1",
     "dotenv": "^17.2.0",
     "hedera-agent-kit": "^3.0.1",
     "langchain": "^0.3.30",
-    "prompts": "^2.4.2"
+    "prompts": "^2.4.2",
+    "ws": "^8.18.3"
   },
   "author": "",
   "license": "Apache-2.0",
