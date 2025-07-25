@@ -4,13 +4,16 @@ const WebSocket = require('ws');
 class TestClient {
   constructor(url = 'ws://localhost:8080') {
     this.ws = new WebSocket(url);
+    this.authenticated = false;
+    this.userAccountId = '0.0.48'; // Default test account ID
     this.setupEventListeners();
   }
 
   setupEventListeners() {
     this.ws.on('open', () => {
       console.log('🔗 Connected to Hedera WebSocket Agent');
-      this.showMenu();
+      // Authenticate immediately after connection
+      this.authenticate();
     });
 
     this.ws.on('message', (data) => {
@@ -29,10 +32,28 @@ class TestClient {
     });
   }
 
+  authenticate() {
+    console.log(`🔐 Authenticating with account: ${this.userAccountId}`);
+    const authMessage = {
+      type: 'CONNECTION_AUTH',
+      userAccountId: this.userAccountId,
+      timestamp: Date.now()
+    };
+    
+    this.ws.send(JSON.stringify(authMessage));
+  }
+
   handleMessage(message) {
     switch (message.type) {
       case 'SYSTEM_MESSAGE':
         console.log(`\n🔔 System [${message.level}]: ${message.message}\n`);
+        
+        // Check if this is authentication success message
+        if (message.message.includes('Authenticated successfully')) {
+          this.authenticated = true;
+          console.log('✅ Authentication completed! You can now interact with the agent.');
+          this.showMenu();
+        }
         break;
       
       case 'AGENT_RESPONSE':
@@ -41,13 +62,22 @@ class TestClient {
           console.log('💰 This response includes a transaction to sign...');
         }
         console.log('');
+        this.showMenu();
         break;
       
       case 'TRANSACTION_TO_SIGN':
         console.log(`\n🔏 Transaction received for signing:`);
         console.log(`📝 Original query: ${message.originalQuery}`);
         console.log(`📊 Transaction bytes: ${message.transactionBytes.length} bytes`);
-        console.log(`🔗 Bytes (hex): ${Buffer.from(message.transactionBytes).toString('hex').substring(0, 100)}...`);
+        
+        const hexBytes = Buffer.from(message.transactionBytes).toString('hex');
+        console.log(`🔗 Bytes (hex): ${hexBytes}`);
+        
+        // Also show bytes in a more readable format (chunked)
+        console.log(`📋 Bytes (chunked):`);
+        for (let i = 0; i < hexBytes.length; i += 64) {
+          console.log(`   ${hexBytes.substring(i, i + 64)}`);
+        }
         
         // Simulate signing and successful execution
         setTimeout(() => {
@@ -57,9 +87,10 @@ class TestClient {
       
       default:
         console.log('⚠️  Unknown message:', message);
+        if (this.authenticated) {
+          this.showMenu();
+        }
     }
-    
-    this.showMenu();
   }
 
   simulateTransactionSuccess() {
@@ -81,21 +112,35 @@ class TestClient {
     const userMessage = {
       type: 'USER_MESSAGE',
       message: message,
+      userAccountId: this.userAccountId, // Include user account ID
       timestamp: Date.now()
     };
 
     this.ws.send(JSON.stringify(userMessage));
-    console.log(`\n👤 You: ${message}`);
+    console.log(`\n👤 You (${this.userAccountId}): ${message}`);
     console.log('⏳ Waiting for agent response...\n');
   }
 
+  changeAccount(newAccountId) {
+    this.userAccountId = newAccountId;
+    console.log(`🔄 Switching to account: ${newAccountId}`);
+    this.authenticated = false;
+    this.authenticate();
+  }
+
   showMenu() {
+    if (!this.authenticated) {
+      console.log('⏳ Please wait for authentication to complete...');
+      return;
+    }
+    
     console.log('────────────────────────────────────');
-    console.log('💬 Available commands:');
+    console.log(`💬 Available commands (Account: ${this.userAccountId}):`);
     console.log('1. balance - Check HBAR balance');
     console.log('2. create token - Create a fungible token');
     console.log('3. create topic - Create a consensus topic');
-    console.log('4. exit - Exit');
+    console.log('4. switch account - Change to different account');
+    console.log('5. exit - Exit');
     console.log('Or type any message for the agent...');
     console.log('────────────────────────────────────');
   }
@@ -117,8 +162,18 @@ class TestClient {
         rl.close();
         return;
       }
+
+      if (message.toLowerCase() === 'switch account') {
+        rl.question('Enter new account ID (e.g., 0.0.123): ', (accountId) => {
+          if (accountId.trim()) {
+            this.changeAccount(accountId.trim());
+          }
+          rl.prompt();
+        });
+        return;
+      }
       
-      if (message) {
+      if (message && this.authenticated) {
         // Map quick commands
         const quickCommands = {
           'balance': 'What is my HBAR balance?',
@@ -128,6 +183,8 @@ class TestClient {
 
         const finalMessage = quickCommands[message.toLowerCase()] || message;
         this.sendUserMessage(finalMessage);
+      } else if (message && !this.authenticated) {
+        console.log('⚠️  Please wait for authentication to complete before sending messages.');
       }
       
       setTimeout(() => rl.prompt(), 100);
@@ -144,7 +201,9 @@ class TestClient {
 
 // Run the test client
 console.log('🚀 Starting WebSocket test client...');
-console.log('📡 Connecting to ws://localhost:8080...\n');
+console.log('📡 Connecting to ws://localhost:8080...');
+console.log('🔐 Will authenticate with default account: 0.0.48');
+console.log('💡 You can switch accounts using the "switch account" command\n');
 
 const client = new TestClient();
 
