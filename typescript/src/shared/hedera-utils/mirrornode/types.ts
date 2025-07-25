@@ -45,7 +45,7 @@ export type AccountResponse = {
 
 export type AccountAPIResponse = {
   accountId: string;
-  key: {
+  key?: {
     key: string;
     _type: KeyEncryptionType;
   };
