@@ -1,6 +1,6 @@
 const WebSocket = require('ws');
 
-// Cliente de prueba para el WebSocket Agent
+// Test client for the WebSocket Agent
 class TestClient {
   constructor(url = 'ws://localhost:8080') {
     this.ws = new WebSocket(url);
@@ -9,7 +9,7 @@ class TestClient {
 
   setupEventListeners() {
     this.ws.on('open', () => {
-      console.log('🔗 Conectado al Hedera WebSocket Agent');
+      console.log('🔗 Connected to Hedera WebSocket Agent');
       this.showMenu();
     });
 
@@ -19,12 +19,12 @@ class TestClient {
     });
 
     this.ws.on('close', () => {
-      console.log('🔌 Conexión cerrada');
+      console.log('🔌 Connection closed');
       process.exit(0);
     });
 
     this.ws.on('error', (error) => {
-      console.error('❌ Error de conexión:', error.message);
+      console.error('❌ Connection error:', error.message);
       process.exit(1);
     });
   }
@@ -32,38 +32,38 @@ class TestClient {
   handleMessage(message) {
     switch (message.type) {
       case 'SYSTEM_MESSAGE':
-        console.log(`\n🔔 Sistema [${message.level}]: ${message.message}\n`);
+        console.log(`\n🔔 System [${message.level}]: ${message.message}\n`);
         break;
       
       case 'AGENT_RESPONSE':
-        console.log(`\n🤖 Agente: ${message.message}`);
+        console.log(`\n🤖 Agent: ${message.message}`);
         if (message.hasTransaction) {
-          console.log('💰 Esta respuesta incluye una transacción para firmar...');
+          console.log('💰 This response includes a transaction to sign...');
         }
         console.log('');
         break;
       
       case 'TRANSACTION_TO_SIGN':
-        console.log(`\n🔏 Transacción recibida para firmar:`);
-        console.log(`📝 Consulta original: ${message.originalQuery}`);
-        console.log(`📊 Bytes de transacción: ${message.transactionBytes.length} bytes`);
+        console.log(`\n🔏 Transaction received for signing:`);
+        console.log(`📝 Original query: ${message.originalQuery}`);
+        console.log(`📊 Transaction bytes: ${message.transactionBytes.length} bytes`);
         console.log(`🔗 Bytes (hex): ${Buffer.from(message.transactionBytes).toString('hex').substring(0, 100)}...`);
         
-        // Simular firma y ejecución exitosa
+        // Simulate signing and successful execution
         setTimeout(() => {
           this.simulateTransactionSuccess();
         }, 2000);
         break;
       
       default:
-        console.log('⚠️  Mensaje desconocido:', message);
+        console.log('⚠️  Unknown message:', message);
     }
     
     this.showMenu();
   }
 
   simulateTransactionSuccess() {
-    console.log('\n🔄 Simulando firma y ejecución de transacción...');
+    console.log('\n🔄 Simulating transaction signing and execution...');
     
     const result = {
       type: 'TRANSACTION_RESULT',
@@ -74,7 +74,7 @@ class TestClient {
     };
 
     this.ws.send(JSON.stringify(result));
-    console.log('✅ Resultado de transacción enviado');
+    console.log('✅ Transaction result sent');
   }
 
   sendUserMessage(message) {
@@ -85,18 +85,18 @@ class TestClient {
     };
 
     this.ws.send(JSON.stringify(userMessage));
-    console.log(`\n👤 Tú: ${message}`);
-    console.log('⏳ Esperando respuesta del agente...\n');
+    console.log(`\n👤 You: ${message}`);
+    console.log('⏳ Waiting for agent response...\n');
   }
 
   showMenu() {
     console.log('────────────────────────────────────');
-    console.log('💬 Comandos disponibles:');
-    console.log('1. balance - Consultar balance de HBAR');
-    console.log('2. create token - Crear un token fungible');
-    console.log('3. create topic - Crear un tema de consenso');
-    console.log('4. exit - Salir');
-    console.log('O escribe cualquier mensaje para el agente...');
+    console.log('💬 Available commands:');
+    console.log('1. balance - Check HBAR balance');
+    console.log('2. create token - Create a fungible token');
+    console.log('3. create topic - Create a consensus topic');
+    console.log('4. exit - Exit');
+    console.log('Or type any message for the agent...');
     console.log('────────────────────────────────────');
   }
 
@@ -112,18 +112,18 @@ class TestClient {
       const message = input.trim();
       
       if (message.toLowerCase() === 'exit') {
-        console.log('👋 ¡Hasta luego!');
+        console.log('👋 See you later!');
         this.ws.close();
         rl.close();
         return;
       }
       
       if (message) {
-        // Mapear comandos rápidos
+        // Map quick commands
         const quickCommands = {
-          'balance': '¿Cuál es mi balance de HBAR?',
-          'create token': 'Crea un token fungible llamado "MiToken" con símbolo "MTK"',
-          'create topic': 'Crea un nuevo tema de consenso para mensajes'
+          'balance': 'What is my HBAR balance?',
+          'create token': 'Create a fungible token called "MyToken" with symbol "MTK"',
+          'create topic': 'Create a new consensus topic for messages'
         };
 
         const finalMessage = quickCommands[message.toLowerCase()] || message;
@@ -134,7 +134,7 @@ class TestClient {
     });
 
     rl.on('close', () => {
-      console.log('\n👋 Cliente cerrado');
+      console.log('\n👋 Client closed');
       process.exit(0);
     });
 
@@ -142,13 +142,13 @@ class TestClient {
   }
 }
 
-// Ejecutar el cliente de prueba
-console.log('🚀 Iniciando cliente de prueba WebSocket...');
-console.log('📡 Conectando a ws://localhost:8080...\n');
+// Run the test client
+console.log('🚀 Starting WebSocket test client...');
+console.log('📡 Connecting to ws://localhost:8080...\n');
 
 const client = new TestClient();
 
-// Esperar a que se conecte antes de mostrar el prompt
+// Wait for connection before showing the prompt
 setTimeout(() => {
   client.start();
 }, 1000); 
