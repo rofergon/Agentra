@@ -18,6 +18,7 @@ interface BaseMessage {
 interface UserMessage extends BaseMessage {
   type: 'USER_MESSAGE';
   message: string;
+  userAccountId?: string; // Account ID del usuario
 }
 
 interface AgentResponse extends BaseMessage {
@@ -46,13 +47,25 @@ interface SystemMessage extends BaseMessage {
   level: 'info' | 'error' | 'warning';
 }
 
-type WSMessage = UserMessage | AgentResponse | TransactionToSign | TransactionResult | SystemMessage;
+interface ConnectionAuth extends BaseMessage {
+  type: 'CONNECTION_AUTH';
+  userAccountId: string;
+}
+
+type WSMessage = UserMessage | AgentResponse | TransactionToSign | TransactionResult | SystemMessage | ConnectionAuth;
+
+interface UserConnection {
+  ws: WebSocket;
+  userAccountId: string;
+  agentExecutor: AgentExecutor;
+  memory: BufferMemory;
+}
 
 class HederaWebSocketAgent {
   private wss: WebSocketServer;
-  private agentExecutor!: AgentExecutor;
-  private memory!: BufferMemory;
-  private clients: Set<WebSocket> = new Set();
+  private llm!: ChatOpenAI;
+  private agentClient!: Client;
+  private userConnections: Map<WebSocket, UserConnection> = new Map();
 
   constructor(port: number = 8080) {
     this.wss = new WebSocketServer({ port });
@@ -63,16 +76,17 @@ class HederaWebSocketAgent {
     console.log('🚀 Initializing Hedera WebSocket Agent...');
 
     // Configuración OpenAI
-    const llm = new ChatOpenAI({
+    this.llm = new ChatOpenAI({
       model: 'gpt-4o-mini',
     });
 
-    const operatorAccountId = process.env.ACCOUNT_ID!;
-    const operatorPrivateKey = PrivateKey.fromStringECDSA(process.env.PRIVATE_KEY!);
+    // Cliente Hedera para testnet (sin operator, será configurado por usuario)
+    this.agentClient = Client.forTestnet();
 
-    // Cliente Hedera para testnet
-    const agentClient = Client.forTestnet();
+    console.log('✅ Hedera WebSocket Agent initialized successfully');
+  }
 
+  private async createUserConnection(ws: WebSocket, userAccountId: string): Promise<UserConnection> {
     // Herramientas disponibles
     const {
       CREATE_FUNGIBLE_TOKEN_TOOL,
@@ -85,9 +99,9 @@ class HederaWebSocketAgent {
       GET_TOPIC_MESSAGES_QUERY_TOOL,
     } = hederaTools;
 
-    // Toolkit de Hedera en modo RETURN_BYTES
+    // Toolkit de Hedera en modo RETURN_BYTES con accountId del usuario
     const hederaAgentToolkit = new HederaLangchainToolkit({
-      client: agentClient,
+      client: this.agentClient,
       configuration: {
         tools: [
           CREATE_TOPIC_TOOL,
@@ -101,7 +115,7 @@ class HederaWebSocketAgent {
         ],
         context: {
           mode: AgentMode.RETURN_BYTES,
-          accountId: operatorAccountId,
+          accountId: userAccountId, // ✅ CAMBIO CLAVE: Usar accountId del usuario que se conecta, no del operador del servidor
         },
       },
     });
@@ -119,39 +133,43 @@ class HederaWebSocketAgent {
 
     // Crear agente
     const agent = createToolCallingAgent({
-      llm,
+      llm: this.llm,
       tools,
       prompt,
     });
 
-    // Memoria para conversación
-    this.memory = new BufferMemory({
+    // Memoria para conversación del usuario
+    const memory = new BufferMemory({
       memoryKey: 'chat_history',
       inputKey: 'input',
       outputKey: 'output',
       returnMessages: true,
     });
 
-    // Executor del agente
-    this.agentExecutor = new AgentExecutor({
+    // Executor del agente para este usuario
+    const agentExecutor = new AgentExecutor({
       agent,
       tools,
-      memory: this.memory,
+      memory,
       returnIntermediateSteps: true,
     });
 
-    console.log('✅ Hedera WebSocket Agent initialized successfully');
+    return {
+      ws,
+      userAccountId,
+      agentExecutor,
+      memory,
+    };
   }
 
   private setupWebSocketServer(): void {
     this.wss.on('connection', (ws: WebSocket) => {
       console.log('🔗 New WebSocket connection established');
-      this.clients.add(ws);
 
       // Send welcome message
       this.sendMessage(ws, {
         type: 'SYSTEM_MESSAGE',
-        message: 'Connected to Hedera Agent. You can start asking questions!',
+        message: 'Connected to Hedera Agent. Please authenticate with your account ID first using CONNECTION_AUTH message.',
         level: 'info',
         timestamp: Date.now(),
       });
@@ -175,13 +193,13 @@ class HederaWebSocketAgent {
       // Manejar desconexión
       ws.on('close', () => {
         console.log('🔌 WebSocket connection closed');
-        this.clients.delete(ws);
+        this.userConnections.delete(ws);
       });
 
       // Manejar errores
       ws.on('error', (error: any) => {
         console.error('❌ WebSocket error:', error);
-        this.clients.delete(ws);
+        this.userConnections.delete(ws);
       });
     });
 
@@ -190,6 +208,10 @@ class HederaWebSocketAgent {
 
   private async handleMessage(ws: WebSocket, message: WSMessage): Promise<void> {
     switch (message.type) {
+      case 'CONNECTION_AUTH':
+        await this.handleConnectionAuth(ws, message);
+        break;
+      
       case 'USER_MESSAGE':
         await this.handleUserMessage(ws, message);
         break;
@@ -203,12 +225,65 @@ class HederaWebSocketAgent {
     }
   }
 
+  private async handleConnectionAuth(ws: WebSocket, message: ConnectionAuth): Promise<void> {
+    try {
+      console.log('🔐 User authentication:', message.userAccountId);
+      
+      // Crear conexión de usuario con su propio toolkit
+      const userConnection = await this.createUserConnection(ws, message.userAccountId);
+      this.userConnections.set(ws, userConnection);
+      
+      this.sendMessage(ws, {
+        type: 'SYSTEM_MESSAGE',
+        message: `✅ Authenticated successfully with account ${message.userAccountId}. You can now start asking questions!`,
+        level: 'info',
+        timestamp: Date.now(),
+      });
+    } catch (error: any) {
+      console.error('❌ Error during authentication:', error);
+      this.sendMessage(ws, {
+        type: 'SYSTEM_MESSAGE',
+        message: `Authentication failed: ${error.message}`,
+        level: 'error',
+        timestamp: Date.now(),
+      });
+    }
+  }
+
   private async handleUserMessage(ws: WebSocket, message: UserMessage): Promise<void> {
     try {
-      console.log('👤 User:', message.message);
+      const userConnection = this.userConnections.get(ws);
+      
+      if (!userConnection) {
+        this.sendMessage(ws, {
+          type: 'SYSTEM_MESSAGE',
+          message: 'Please authenticate first using CONNECTION_AUTH message.',
+          level: 'error',
+          timestamp: Date.now(),
+        });
+        return;
+      }
 
-      // Procesar mensaje con el agente
-      const response = await this.agentExecutor.invoke({ input: message.message });
+      console.log(`👤 User (${userConnection.userAccountId}):`, message.message);
+
+      // Si el mensaje incluye un userAccountId diferente, recrear la conexión
+      if (message.userAccountId && message.userAccountId !== userConnection.userAccountId) {
+        console.log('🔄 Switching to different account:', message.userAccountId);
+        const newUserConnection = await this.createUserConnection(ws, message.userAccountId);
+        this.userConnections.set(ws, newUserConnection);
+        
+        this.sendMessage(ws, {
+          type: 'SYSTEM_MESSAGE',
+          message: `Switched to account ${message.userAccountId}`,
+          level: 'info',
+          timestamp: Date.now(),
+        });
+      }
+
+      const currentConnection = this.userConnections.get(ws)!;
+      
+      // Procesar mensaje con el agente del usuario
+      const response = await currentConnection.agentExecutor.invoke({ input: message.message });
       
       console.log('🤖 Agent:', response?.output ?? response);
 
@@ -284,9 +359,9 @@ class HederaWebSocketAgent {
   }
 
   private broadcast(message: WSMessage): void {
-    this.clients.forEach(client => {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify(message));
+    this.userConnections.forEach((userConnection) => {
+      if (userConnection.ws.readyState === WebSocket.OPEN) {
+        userConnection.ws.send(JSON.stringify(message));
       }
     });
   }
