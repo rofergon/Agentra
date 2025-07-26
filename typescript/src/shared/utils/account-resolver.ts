@@ -1,5 +1,5 @@
 import { Client } from '@hashgraph/sdk';
-import { Context, AgentMode } from '@/shared/configuration';
+import { Context, AgentMode } from '../configuration';
 
 export class AccountResolver {
   /**
