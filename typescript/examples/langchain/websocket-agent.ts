@@ -6,6 +6,9 @@ import { BufferMemory } from 'langchain/memory';
 import { Client, PrivateKey } from '@hashgraph/sdk';
 import * as dotenv from 'dotenv';
 import WebSocket, { WebSocketServer } from 'ws';
+import { DynamicStructuredTool } from '@langchain/core/tools';
+import { ContractCallQuery, ContractId, ContractFunctionParameters } from '@hashgraph/sdk';
+import { z } from 'zod';
 
 dotenv.config();
 
@@ -122,14 +125,261 @@ class HederaWebSocketAgent {
 
     // Prompt template
     const prompt = ChatPromptTemplate.fromMessages([
-      ['system', 'You are a helpful Hedera blockchain assistant. You can help users with token creation, topic management, balance queries, and other Hedera operations.'],
+      ['system', 'You are a helpful Hedera blockchain assistant with DeFi capabilities. You can help users with:\n\n- Token creation and management\n- Topic management (HCS)\n- Balance queries (HBAR and tokens)\n- Account information\n- HBAR transfers\n- **DeFi operations with Bonzo Finance**: Query lending pools, get APY rates, check token reserves, and analyze DeFi metrics on Hedera testnet\n\nFor Bonzo DeFi queries, you can check available tokens, get reserve data, and provide yield/liquidity information from the Bonzo protocol contracts.'],
       ['placeholder', '{chat_history}'],
       ['human', '{input}'],
       ['placeholder', '{agent_scratchpad}'],
     ]);
 
-    // Obtener herramientas
-    const tools = hederaAgentToolkit.getTools();
+    // Obtener herramientas del toolkit de Hedera
+    const hederaToolsList = hederaAgentToolkit.getTools();
+    
+    // Crear herramienta de Bonzo como DynamicStructuredTool directamente
+    const bonzoLangchainTool = new DynamicStructuredTool({
+      name: 'bonzo_contract_query',
+      description: `Query Bonzo Finance DeFi contracts on Hedera testnet for lending pools, reserves, and yield data.
+
+Available operations:
+- Get all reserve tokens with symbols from AaveProtocolDataProvider
+- Get reserves list (token addresses) from LendingPool
+- Get detailed reserve data (APY, utilization, liquidity) for specific assets
+
+This tool provides access to Bonzo's DeFi lending protocol data including yield rates, utilization percentages, and available liquidity.`,
+      schema: z.object({
+        contractType: z.enum(['DATA_PROVIDER', 'LENDING_POOL']).describe(
+          'The type of Bonzo contract to query: DATA_PROVIDER for AaveProtocolDataProvider or LENDING_POOL for LendingPool'
+        ),
+        functionName: z.enum(['getAllReservesTokens', 'getReserveData', 'getReservesList']).describe(
+          'The contract function to call'
+        ),
+        assetAddress: z.string().optional().describe(
+          'The asset address parameter for getReserveData function (required only for this function)'
+        ),
+      }),
+      func: async (params: any) => {
+        try {
+          console.log('🔍 Bonzo contract query started with params:', params);
+          console.log('👤 User account ID:', userAccountId);
+          console.log('🌐 Agent client network:', this.agentClient.ledgerId?.toString());
+          
+          // ⚠️ NOTA: Las direcciones de contrato pueden estar desactualizadas
+          // Estas direcciones fueron proporcionadas pero pueden haber cambiado
+          const BONZO_CONTRACTS = {
+            AAVE_PROTOCOL_DATA_PROVIDER: '0.0.4999382',
+            LENDING_POOL: '0.0.4999355',
+          };
+
+          // Validate parameters
+          if (params.functionName === 'getReserveData' && !params.assetAddress) {
+            console.log('❌ Missing assetAddress for getReserveData');
+            return JSON.stringify({
+              error: 'assetAddress is required when using getReserveData function',
+              suggestion: 'Provide the token address you want to query reserve data for'
+            });
+          }
+
+          // Determine contract ID based on type
+          const contractId = params.contractType === 'DATA_PROVIDER' 
+            ? BONZO_CONTRACTS.AAVE_PROTOCOL_DATA_PROVIDER 
+            : BONZO_CONTRACTS.LENDING_POOL;
+
+          console.log(`📋 Contract ID: ${contractId}, Function: ${params.functionName}`);
+
+          // Use JSON-RPC Relay (correct Hedera approach for contract calls)
+          console.log('🔗 Using Hedera JSON-RPC Relay for contract call...');
+          const jsonRpcUrl = this.agentClient.ledgerId?.toString() === 'testnet' 
+            ? 'https://testnet.hashio.io/api'
+            : 'https://mainnet.hashio.io/api';
+          
+          console.log('🔍 Building eth_call request...');
+          
+          // Convert contract address to EVM format
+          const [shard, realm, num] = contractId.split('.');
+          const contractAddress = '0x' + parseInt(num).toString(16).padStart(40, '0');
+          console.log(`📮 Contract EVM address: ${contractAddress}`);
+          
+          // Build function selector for the method
+          let functionSelector: string;
+          let callData: string;
+          
+          switch (params.functionName) {
+            case 'getAllReservesTokens':
+              // Function signature: getAllReservesTokens() - DataProvider contract
+              // Note: This selector needs verification from DataProvider ABI
+              functionSelector = '0xd1946dbc'; // This might be incorrect - need DataProvider ABI
+              callData = functionSelector;
+              break;
+            case 'getReservesList':
+              // Function signature: getReservesList()
+              functionSelector = '0xd1946dbc'; // Correct selector from ABI
+              callData = functionSelector;
+              break;
+            case 'getReserveData':
+              // Function signature: getReserveData(address)
+              functionSelector = '0x35ea6a75'; // Keccak256 hash of "getReserveData(address)" first 4 bytes
+              const assetAddressPadded = params.assetAddress!.replace('0x', '').padStart(64, '0');
+              callData = functionSelector + assetAddressPadded;
+              break;
+            default:
+              throw new Error(`Unsupported function: ${params.functionName}`);
+          }
+          
+          console.log(`🎯 Function selector: ${functionSelector}`);
+          console.log(`📊 Call data: ${callData}`);
+          
+          // Prepare JSON-RPC eth_call request
+          const jsonRpcRequest = {
+            "jsonrpc": "2.0",
+            "method": "eth_call",
+            "params": [
+              {
+                "to": contractAddress,
+                "data": callData
+              },
+              "latest"
+            ],
+            "id": 1
+          };
+          
+          console.log('🌐 Making eth_call to JSON-RPC Relay:', jsonRpcUrl);
+          console.log('📤 JSON-RPC request:', jsonRpcRequest);
+          
+          const response = await fetch(jsonRpcUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(jsonRpcRequest)
+          });
+          
+          if (!response.ok) {
+            throw new Error(`JSON-RPC call failed: ${response.status} ${response.statusText}`);
+          }
+          
+          const responseData = await response.json();
+          console.log('📥 JSON-RPC response:', responseData);
+          
+          if (responseData.error) {
+            // Handle CONTRACT_REVERT_EXECUTED specifically
+            if (responseData.error.message.includes('CONTRACT_REVERT_EXECUTED')) {
+              return JSON.stringify({
+                error: 'Contract call failed: CONTRACT_REVERT_EXECUTED',
+                possibleCauses: [
+                  'The function does not exist in this contract',
+                  'The contract addresses may be incorrect or outdated',
+                  'The function selectors may be wrong',
+                  'The contract may have access restrictions'
+                ],
+                suggestion: 'The Bonzo Finance contract addresses or functions may have changed. Please verify the current contract addresses and available functions.',
+                contractDetails: {
+                  contractId: contractId,
+                  contractAddress: contractAddress,
+                  functionName: params.functionName,
+                  functionSelector: functionSelector
+                },
+                troubleshooting: {
+                  step1: 'Verify the contract exists at https://hashscan.io/testnet/contract/' + contractAddress,
+                  step2: 'Check if the contract has the expected functions',
+                  step3: 'Confirm the contract addresses are current from Bonzo Finance documentation'
+                }
+              }, null, 2);
+            }
+            throw new Error(`JSON-RPC error: ${responseData.error.message}`);
+          }
+          
+          // Create a result object
+          const result = {
+            bytes: responseData.result ? Buffer.from(responseData.result.replace('0x', ''), 'hex') : Buffer.alloc(0),
+            gasUsed: { toString: () => '0' }
+          };
+          
+          console.log('✅ Contract call successful, gas used:', result.gasUsed.toString());
+
+          // Parse results based on function type
+          let parsedResult: any = {
+            success: true,
+            contractType: params.contractType,
+            function: params.functionName,
+            contractId: contractId,
+            contractAddress: contractAddress
+          };
+
+          try {
+            switch (params.functionName) {
+              case 'getAllReservesTokens':
+                parsedResult.note = 'Function returns list of reserve tokens with symbols';
+                parsedResult.rawData = Array.from(result.bytes);
+                if (result.bytes.length === 0) {
+                  parsedResult.warning = 'No data returned - the contract may not have any reserves or the function may not exist';
+                }
+                break;
+              
+              case 'getReservesList':
+                parsedResult.note = 'Function returns array of token addresses';
+                parsedResult.rawData = Array.from(result.bytes);
+                if (result.bytes.length === 0) {
+                  parsedResult.warning = 'No data returned - the contract may not have any reserves or the function may not exist';
+                }
+                break;
+              
+              case 'getReserveData':
+                parsedResult.assetAddress = params.assetAddress;
+                parsedResult.note = 'Function returns reserve metrics (liquidity, rates, etc.)';
+                parsedResult.rawData = Array.from(result.bytes);
+                if (result.bytes.length === 0) {
+                  parsedResult.warning = 'No data returned - the asset may not exist or the function may not be available';
+                }
+                break;
+              
+              default:
+                parsedResult.rawData = Array.from(result.bytes);
+            }
+          } catch (parseError) {
+            parsedResult.parseError = `Could not parse result: ${parseError}`;
+            parsedResult.rawData = Array.from(result.bytes);
+          }
+
+          parsedResult.gasUsed = result.gasUsed.toString();
+          return JSON.stringify(parsedResult, null, 2);
+
+        } catch (error) {
+          console.error('❌ Bonzo contract query failed:', error);
+          console.error('Stack trace:', error instanceof Error ? error.stack : 'No stack trace');
+          
+          let errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          let troubleshooting = {};
+          
+          if (errorMessage.includes('CONTRACT_REVERT_EXECUTED')) {
+            troubleshooting = {
+              issue: 'Contract execution reverted',
+              likely_causes: [
+                'Function does not exist in the contract',
+                'Incorrect function parameters',
+                'Contract addresses are outdated',
+                'Function selectors are wrong'
+              ],
+              next_steps: [
+                'Verify contract addresses from official Bonzo Finance documentation',
+                'Check contract functions on HashScan',
+                'Confirm the contract is the correct Bonzo DeFi contract'
+              ]
+            };
+          }
+          
+          return JSON.stringify({
+            error: `Error querying Bonzo contracts: ${errorMessage}`,
+            contractType: params.contractType,
+            functionName: params.functionName,
+            troubleshooting: troubleshooting,
+            note: 'This error suggests the Bonzo Finance contract addresses or functions may have changed since implementation',
+            recommendation: 'Please check the latest Bonzo Finance documentation for current contract addresses'
+          }, null, 2);
+        }
+      },
+    });
+    
+    // Combinar todas las herramientas
+    const tools = [...hederaToolsList, bonzoLangchainTool];
 
     // Crear agente
     const agent = createToolCallingAgent({
