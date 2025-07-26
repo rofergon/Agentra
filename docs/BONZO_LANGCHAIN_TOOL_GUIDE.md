@@ -311,6 +311,47 @@ export {
 } from './langchain-tools';
 ```
 
+## Model Awareness & Tool Selection
+
+### Teaching the Model About New Tools
+
+The key to successful tool integration is updating the **system prompt** to inform the model about available capabilities:
+
+```typescript
+// websocket-agent.ts - System prompt configuration
+const prompt = ChatPromptTemplate.fromMessages([
+  ['system', `You are a helpful Hedera blockchain assistant with comprehensive DeFi capabilities.
+
+**Hedera Native Operations:**
+- Token creation and management (HTS)
+- Balance queries (HBAR and tokens)
+- Account transfers and topic management
+
+**DeFi Analytics with Bonzo Finance:**
+- **Account Dashboard**: Get detailed lending/borrowing positions
+- **Market Information**: Real-time APY rates, utilization, liquidity
+- **Pool Statistics**: 24-hour protocol statistics
+- **Protocol Information**: Contract addresses and configuration
+- **BONZO Token Data**: Token details and circulating supply
+
+You use the official Bonzo Finance REST API for real-time, accurate DeFi data.
+For account-specific queries, automatically use the user's account ID when not specified.`],
+  // ... other message templates
+]);
+```
+
+### Tool Selection Pattern
+
+The model automatically selects the appropriate tool based on:
+- **Keywords**: "lending", "borrowing", "yields", "DeFi", "Bonzo"
+- **User intent**: Market data requests, account position queries
+- **Context**: Available user account ID for personalized queries
+
+Example query → tool selection:
+- *"What are current lending rates?"* → `market_info` operation
+- *"Show my positions"* → `account_dashboard` with user's account ID
+- *"Bonzo protocol stats"* → `pool_stats` operation
+
 ## Agent Integration
 
 ### WebSocket Agent Example
