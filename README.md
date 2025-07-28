@@ -4,6 +4,8 @@
 
 An artificial intelligence agent specialized in the Hedera Hashgraph DeFi ecosystem that helps both novice and experienced users navigate and optimize their investments in decentralized finance protocols. The agent uses real-time analysis of multiple DeFi platforms to identify the best yield opportunities.
 
+
+
 ## 🎯 Problem Solved
 
 ### For Novice Users:
@@ -131,6 +133,31 @@ An artificial intelligence agent specialized in the Hedera Hashgraph DeFi ecosys
 - **Web dashboard**: Graphical interface complementing the conversational agent
 - **Predictive analysis**: ML to predict market trends and opportunities
 
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js (v16 or higher)
+- npm or yarn package manager
+
+### Installation & Startup
+
+1. **Navigate to the langchain directory:**
+   ```bash
+   cd typescript/examples/langchain
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+
+3. **Start the WebSocket agent:**
+   ```bash
+   npm run start:websocket
+   ```
+
+The agent will start and be ready to accept WebSocket connections for real-time DeFi analysis and recommendations.
 ---
 
 *Built to democratize access to DeFi on Hedera Hashgraph* 🌐 
