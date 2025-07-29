@@ -1,5 +1,33 @@
-import { Context } from '../configuration';
+import { Context, getHederaNetwork, getNetworkSpecificEnvVar } from '../configuration';
 import { z } from 'zod';
+
+// Dynamic configuration based on environment
+const createBonzoConfig = () => {
+  const network = getHederaNetwork();
+  
+  return {
+    LENDING_POOL_ADDRESS: getNetworkSpecificEnvVar(
+      'BONZO', 
+      'LENDING_POOL', 
+      network,
+      network === 'mainnet' ? '0x236897c518996163E7b313aD21D1C9fCC7BA1afc' : undefined
+    ),
+    WHBAR_TOKEN_ID: getNetworkSpecificEnvVar(
+      'BONZO', 
+      'WHBAR_TOKEN_ID', 
+      network,
+      network === 'mainnet' ? '0.0.1456986' : undefined
+    ),
+    WHBAR_ADDRESS: getNetworkSpecificEnvVar(
+      'BONZO', 
+      'WHBAR_ADDRESS', 
+      network,
+      network === 'mainnet' ? '0x0000000000000000000000000000000000163b5a' : undefined
+    ),
+    NETWORK: network,
+    GAS_LIMIT: 1000000, // Default gas limit for contract calls
+  } as const;
+};
 
 export const bonzoDepositParameters = (context: Context = {}) =>
   z.object({
@@ -19,11 +47,36 @@ export const bonzoDepositParametersNormalised = (context: Context = {}) =>
     lendingPoolAddress: z.string().describe('Bonzo LendingPool contract address'),
   });
 
-// Constants for Bonzo Finance on Hedera Mainnet
-export const BONZO_CONFIG = {
-  LENDING_POOL_ADDRESS: '0x236897c518996163E7b313aD21D1C9fCC7BA1afc',
-  WHBAR_TOKEN_ID: '0.0.1456986',
-  WHBAR_ADDRESS: '0x0000000000000000000000000000000000163b5a',
-  NETWORK: 'mainnet',
-  GAS_LIMIT: 1000000, // Default gas limit for contract calls
-} as const; 
+// Export the dynamic configuration
+export const BONZO_CONFIG = createBonzoConfig();
+
+// Export helper functions for accessing network-specific configs
+export const getBonzoConfigForNetwork = (network: 'testnet' | 'mainnet') => {
+  return {
+    LENDING_POOL_ADDRESS: getNetworkSpecificEnvVar(
+      'BONZO', 
+      'LENDING_POOL', 
+      network,
+      network === 'mainnet' ? '0x236897c518996163E7b313aD21D1C9fCC7BA1afc' : undefined
+    ),
+    WHBAR_TOKEN_ID: getNetworkSpecificEnvVar(
+      'BONZO', 
+      'WHBAR_TOKEN_ID', 
+      network,
+      network === 'mainnet' ? '0.0.1456986' : undefined
+    ),
+    WHBAR_ADDRESS: getNetworkSpecificEnvVar(
+      'BONZO', 
+      'WHBAR_ADDRESS', 
+      network,
+      network === 'mainnet' ? '0x0000000000000000000000000000000000163b5a' : undefined
+    ),
+    NETWORK: network,
+    GAS_LIMIT: 1000000,
+  };
+};
+
+// Log current configuration on import (for debugging)
+console.log(`🌐 Bonzo Finance configured for: ${BONZO_CONFIG.NETWORK.toUpperCase()}`);
+console.log(`📍 LendingPool: ${BONZO_CONFIG.LENDING_POOL_ADDRESS}`);
+console.log(`🪙 WHBAR Token: ${BONZO_CONFIG.WHBAR_TOKEN_ID}`); 
