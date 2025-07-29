@@ -1,0 +1,175 @@
+//
+// Functions (read-only)
+//
+
+0.
+function FLASHLOAN_PREMIUM_TOTAL() view returns (uint256)
+VIEW
+0x074b2e43
+9
+
+1.
+function LENDINGPOOL_REVISION() view returns (uint256)
+VIEW
+0x8afaff02
+1
+
+2.
+function MAX_NUMBER_RESERVES() view returns (uint256)
+VIEW
+0xf8119d51
+128
+
+3.
+function MAX_STABLE_RATE_BORROW_SIZE_PERCENT() view returns (uint256)
+VIEW
+0xe82fec2f
+2500
+
+4.
+function getAddressesProvider() view returns (address)
+VIEW
+0xfe65acfe
+"0x76b846DAB3646527bfb75952E1f33AfAA72B56D1"
+
+5.
+function getAmountInEth(uint256 amount, address asset) view returns (uint256 amountInEth)
+VIEW
+0x544c689f
+
+6.
+function getConfiguration(address asset) view returns ((uint256 data))
+VIEW
+0xc44b11f7
+
+7.
+function getDecimals(address asset) view returns (uint8)
+VIEW
+0xcf54aaa0
+
+8.
+function getReserveData(address asset) view returns (((uint256 data) configuration, uint128 liquidityIndex, uint128 variableBorrowIndex, uint128 currentLiquidityRate, uint128 currentVariableBorrowRate, uint128 currentStableBorrowRate, uint40 lastUpdateTimestamp, address aTokenAddress, address stableDebtTokenAddress, address variableDebtTokenAddress, address interestRateStrategyAddress, uint8 id))
+VIEW
+0x35ea6a75
+
+9.
+function getReserveNormalizedIncome(address asset) view returns (uint256)
+VIEW
+0xd15e0053
+
+10.
+function getReserveNormalizedVariableDebt(address asset) view returns (uint256)
+VIEW
+0x386497fd
+
+11.
+function getReservesList() view returns (address[])
+VIEW
+0xd1946dbc
+[]
+
+12.
+function getUserAccountData(address user) view returns (uint256 totalCollateralETH, uint256 totalDebtETH, uint256 availableBorrowsETH, uint256 currentLiquidationThreshold, uint256 ltv, uint256 healthFactor)
+VIEW
+0xbf92857c
+
+13.
+function getUserConfiguration(address user) view returns ((uint256 data))
+VIEW
+0x4417a583
+
+14.
+function paused() view returns (bool)
+VIEW
+0x5c975abb
+false
+//
+// Functions (read-write)
+//
+
+0.
+function borrow(address asset, uint256 amount, uint256 interestRateMode, uint16 referralCode, address onBehalfOf)
+NONPAYABLE
+0xa415bcad
+
+1.
+function deposit(address asset, uint256 amount, address onBehalfOf, uint16 referralCode) payable
+PAYABLE
+0xe8eda9df
+
+2.
+function finalizeTransfer(address asset, address from, address to, uint256 amount, uint256 balanceFromBefore, uint256 balanceToBefore)
+NONPAYABLE
+0xd5ed3933
+
+3.
+function flashLoan(address receiverAddress, address[] assets, uint256[] amounts, uint256[] modes, address onBehalfOf, bytes params, uint16 referralCode)
+NONPAYABLE
+0xab9c4b5d
+
+4.
+function initReserve(address asset, address aTokenAddress, address stableDebtAddress, address variableDebtAddress, address interestRateStrategyAddress)
+NONPAYABLE
+0x7a708e92
+
+5.
+function initialize(address provider)
+NONPAYABLE
+0xc4d66de8
+
+6.
+function liquidationCall(address collateralAsset, address debtAsset, address user, uint256 debtToCover, bool receiveAToken)
+NONPAYABLE
+0x00a718a9
+
+7.
+function repay(address asset, uint256 amount, uint256 rateMode, address onBehalfOf) payable returns (uint256)
+PAYABLE
+0x573ade81
+
+8.
+function setConfiguration(address asset, uint256 configuration)
+NONPAYABLE
+0xb8d29276
+
+9.
+function setPause(bool val)
+NONPAYABLE
+0xbedb86fb
+
+10.
+function setReserveInterestRateStrategyAddress(address asset, address rateStrategyAddress)
+NONPAYABLE
+0x1d2118f9
+
+11.
+function setUserUseReserveAsCollateral(address asset, bool useAsCollateral)
+NONPAYABLE
+0x5a3b74b9
+
+12.
+function withdraw(address asset, uint256 amount, address to) returns (uint256)
+NONPAYABLE
+0x69328dec
+//
+// Events
+//
+
+event Borrow(address indexed reserve, address user, address indexed onBehalfOf, uint256 amount, uint256 borrowRateMode, uint256 borrowRate, uint16 indexed referral)
+event Deposit(address indexed reserve, address user, address indexed onBehalfOf, uint256 amount, uint16 indexed referral)
+event FlashLoan(address indexed target, address indexed initiator, address indexed asset, uint256 amount, uint256 premium, uint16 referralCode)
+event LiquidationCall(address indexed collateralAsset, address indexed debtAsset, address indexed user, uint256 debtToCover, uint256 liquidatedCollateralAmount, address liquidator, bool receiveAToken)
+event Paused()
+event Repay(address indexed reserve, address indexed user, address indexed repayer, uint256 amount)
+event ReserveDataUpdated(address indexed reserve, uint256 liquidityRate, uint256 stableBorrowRate, uint256 variableBorrowRate, uint256 liquidityIndex, uint256 variableBorrowIndex)
+event ReserveUsedAsCollateralDisabled(address indexed reserve, address indexed user)
+event ReserveUsedAsCollateralEnabled(address indexed reserve, address indexed user)
+event Swap(address indexed reserve, address indexed user, uint256 rateMode)
+event Unpaused()
+event Withdraw(address indexed reserve, address indexed user, address indexed to, uint256 amount)
+//
+// No error
+//
+//
+// No other definitions
+//
