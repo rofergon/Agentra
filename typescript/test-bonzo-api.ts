@@ -37,7 +37,7 @@ const TEST_ENDPOINTS = [
   },
   {
     name: 'Pool Statistics',
-    endpoint: '/pool-stats',
+    endpoint: '/stats',
     method: 'GET',
     requiresParams: false,
     description: 'Get 24-hour protocol statistics'
