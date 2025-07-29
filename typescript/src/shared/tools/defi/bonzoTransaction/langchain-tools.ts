@@ -34,7 +34,7 @@ This tool performs HBAR deposits into Bonzo Finance, a lending protocol on Heder
 - Full transaction flow management
 
 **How it works:**
-1. Associates WHBAR token (0.0.1456986) to your account if not already associated
+1. Associates WHBAR token to your account if not already associated
 2. Calls LendingPool.deposit() to convert HBAR → WHBAR → aWHBAR
 3. You receive aWHBAR tokens that grow in value over time
 4. Can withdraw HBAR + interest later through Bonzo interface
