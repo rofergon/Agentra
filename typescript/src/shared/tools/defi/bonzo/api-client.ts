@@ -9,7 +9,7 @@ export const BONZO_API_CONFIG = {
   ENDPOINTS: {
     ACCOUNT_DASHBOARD: '/dashboard',
     MARKET_INFO: '/market',
-    POOL_STATS: '/pool-stats', 
+    POOL_STATS: '/stats', 
     PROTOCOL_INFO: '/info',
     BONZO_TOKEN: '/bonzo',
     BONZO_CIRCULATION: '/bonzo/circulation',
