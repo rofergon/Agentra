@@ -27,6 +27,7 @@ import getTopicMessagesQuery, {
 import createTopicTool, { CREATE_TOPIC_TOOL } from './tools/consensus/create-topic';
 // Import Bonzo tools from new modular structure (API-based)
 import { bonzoApiQueryTool, BONZO_API_QUERY_TOOL } from './tools/defi/bonzo';
+import { bonzoDepositTool, BONZO_DEPOSIT_TOOL } from './tools/defi/bonzoTransaction';
 
 export type Tool = {
   method: string;
@@ -48,6 +49,7 @@ const tools = (context: Context): Tool[] => [
   getAccountTokenBalancesQuery(context),
   getTopicMessagesQuery(context),
   bonzoApiQueryTool(context),
+  bonzoDepositTool(context),
 ];
 
 export const hederaTools = {
@@ -62,6 +64,7 @@ export const hederaTools = {
   GET_ACCOUNT_TOKEN_BALANCES_QUERY_TOOL,
   GET_TOPIC_MESSAGES_QUERY_TOOL,
   BONZO_API_QUERY_TOOL,
+  BONZO_DEPOSIT_TOOL,
 };
 
 export default tools;

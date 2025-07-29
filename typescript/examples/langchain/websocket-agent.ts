@@ -8,6 +8,7 @@ import * as dotenv from 'dotenv';
 import WebSocket, { WebSocketServer } from 'ws';
 // Import Bonzo tools from the new modular structure (API-based)
 import { createBonzoLangchainTool } from '../../src/shared/tools/defi/bonzo/langchain-tools';
+import { createBonzoDepositLangchainTool, createBonzoDepositStepLangchainTool } from '../../src/shared/tools/defi/bonzoTransaction/langchain-tools';
 
 dotenv.config();
 
@@ -129,6 +130,7 @@ class HederaWebSocketAgent {
 **CORE CAPABILITIES:**
 - Hedera Native Operations (HTS, HCS, transfers, queries)
 - DeFi Analytics with Bonzo Finance (real-time market data, account positions)
+- DeFi Transactions with Bonzo Finance (HBAR deposits to earn interest)
 
 **RESPONSE BEHAVIOR - CRITICAL:**
 - BE CONCISE and contextual in all responses
@@ -164,12 +166,26 @@ Current user account: ${userAccountId}`,],
     // Create Bonzo query tool using the new modular structure
     const bonzoLangchainTool = createBonzoLangchainTool(
       this.agentClient,
-      { mode: AgentMode.RETURN_BYTES },
+      { mode: AgentMode.RETURN_BYTES, accountId: userAccountId },
+      userAccountId
+    );
+    
+    // Create Bonzo deposit tool for HBAR deposits into Bonzo Finance
+    const bonzoDepositLangchainTool = createBonzoDepositLangchainTool(
+      this.agentClient,
+      { mode: AgentMode.RETURN_BYTES, accountId: userAccountId },
+      userAccountId
+    );
+    
+    // Create Bonzo deposit step tool (for completing deposit after token association)
+    const bonzoDepositStepLangchainTool = createBonzoDepositStepLangchainTool(
+      this.agentClient,
+      { mode: AgentMode.RETURN_BYTES, accountId: userAccountId },
       userAccountId
     );
     
     // Combine all tools
-    const tools = [...hederaToolsList, bonzoLangchainTool];
+    const tools = [...hederaToolsList, bonzoLangchainTool, bonzoDepositLangchainTool, bonzoDepositStepLangchainTool];
 
     // Create agent
     const agent = createToolCallingAgent({
