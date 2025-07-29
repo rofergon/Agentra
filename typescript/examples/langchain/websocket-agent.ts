@@ -1,16 +1,17 @@
+import * as dotenv from 'dotenv';
+// Configure dotenv FIRST before any other imports that depend on environment variables
+dotenv.config();
+
 import { HederaLangchainToolkit, AgentMode, hederaTools } from 'hedera-agent-kit';
 import { ChatOpenAI } from '@langchain/openai';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 import { AgentExecutor, createToolCallingAgent } from 'langchain/agents';
 import { BufferMemory } from 'langchain/memory';
 import { Client } from '@hashgraph/sdk';
-import * as dotenv from 'dotenv';
 import WebSocket, { WebSocketServer } from 'ws';
 // Import Bonzo tools from the new modular structure (API-based)
 import { createBonzoLangchainTool } from '../../src/shared/tools/defi/bonzo/langchain-tools';
 import { createBonzoDepositLangchainTool, createBonzoDepositStepLangchainTool } from '../../src/shared/tools/defi/bonzoTransaction/langchain-tools';
-
-dotenv.config();
 
 // WebSocket message types
 interface BaseMessage {
@@ -57,11 +58,21 @@ interface ConnectionAuth extends BaseMessage {
 
 type WSMessage = UserMessage | AgentResponse | TransactionToSign | TransactionResult | SystemMessage | ConnectionAuth;
 
+// Extended interface to support multi-step flows
+interface PendingStep {
+  tool: string;
+  operation: string;
+  step: string;
+  originalParams: any;
+  nextStepInstructions?: string;
+}
+
 interface UserConnection {
   ws: WebSocket;
   userAccountId: string;
   agentExecutor: AgentExecutor;
   memory: BufferMemory;
+  pendingStep?: PendingStep; // Track multi-step flows
 }
 
 class HederaWebSocketAgent {
@@ -345,10 +356,17 @@ Current user account: ${userAccountId}`,],
 
       // Extract transaction bytes if they exist
       const bytes = this.extractBytesFromAgentResponse(response);
+      const nextStep = this.extractNextStepFromAgentResponse(response);
       
       if (bytes !== undefined) {
         // There is a transaction to sign
         const realBytes = Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes.data);
+        
+        // Store pending step information for multi-step flows
+        if (nextStep) {
+          console.log(`📝 Storing pending step: ${nextStep.step} for ${nextStep.tool}`);
+          currentConnection.pendingStep = nextStep;
+        }
         
         // Send agent response
         this.sendMessage(ws, {
@@ -386,6 +404,8 @@ Current user account: ${userAccountId}`,],
   }
 
   private async handleTransactionResult(ws: WebSocket, message: TransactionResult): Promise<void> {
+    const userConnection = this.userConnections.get(ws);
+    
     if (message.success) {
       console.log('✅ Transaction confirmed:', message.transactionId);
       console.log('📊 Status:', message.status);
@@ -396,8 +416,20 @@ Current user account: ${userAccountId}`,],
         level: 'info',
         timestamp: Date.now(),
       });
+
+      // Check if there's a pending next step to execute
+      if (userConnection?.pendingStep) {
+        console.log('🔄 Executing next step automatically:', userConnection.pendingStep.step);
+        await this.executeNextStep(ws, userConnection);
+      }
     } else {
       console.log('❌ Transaction failed:', message.error);
+      
+      // Clear pending step on failure
+      if (userConnection?.pendingStep) {
+        console.log('🚫 Clearing pending step due to transaction failure');
+        userConnection.pendingStep = undefined;
+      }
       
       this.sendMessage(ws, {
         type: 'SYSTEM_MESSAGE',
@@ -439,6 +471,121 @@ Current user account: ${userAccountId}`,],
       }
     }
     return undefined;
+  }
+
+  private extractNextStepFromAgentResponse(response: any): PendingStep | undefined {
+    if (
+      response.intermediateSteps &&
+      response.intermediateSteps.length > 0 &&
+      response.intermediateSteps[0].observation
+    ) {
+      const obs = response.intermediateSteps[0].observation;
+      try {
+        const obsObj = typeof obs === 'string' ? JSON.parse(obs) : obs;
+        
+        // Check if this is a Bonzo deposit flow with next step
+        if (obsObj.nextStep && obsObj.step && obsObj.operation) {
+          return {
+            tool: obsObj.toolInfo?.name || 'bonzo_deposit_tool',
+            operation: obsObj.operation,
+            step: obsObj.nextStep,
+            originalParams: obsObj.originalParams || {},
+            nextStepInstructions: obsObj.instructions || obsObj.message
+          };
+        }
+      } catch (e) {
+        console.error('Error parsing next step:', e);
+      }
+    }
+         return undefined;
+   }
+
+  private async executeNextStep(ws: WebSocket, userConnection: UserConnection): Promise<void> {
+    if (!userConnection.pendingStep) {
+      console.log('⚠️ No pending step to execute');
+      return;
+    }
+
+    const pendingStep = userConnection.pendingStep;
+    console.log(`🚀 Executing next step: ${pendingStep.step} for ${pendingStep.tool}`);
+
+    try {
+      // Create the message for the next step based on the tool and operation
+      let nextStepMessage = '';
+      
+      if (pendingStep.tool === 'bonzo_deposit_tool' && pendingStep.step === 'deposit') {
+        // For Bonzo deposit flow, trigger the deposit step only
+        const params = pendingStep.originalParams;
+        nextStepMessage = `Use bonzo_deposit_step_tool to deposit ${params.hbarAmount} HBAR for account ${userConnection.userAccountId} with referral code ${params.referralCode || 0}`;
+      } else {
+        // Generic next step execution
+        nextStepMessage = `Execute ${pendingStep.step} step for ${pendingStep.tool}`;
+      }
+
+      console.log(`📝 Triggering next step with message: ${nextStepMessage}`);
+
+      // Clear the pending step before execution to avoid loops
+      userConnection.pendingStep = undefined;
+
+      // Execute the next step through the agent
+      const response = await userConnection.agentExecutor.invoke({ 
+        input: nextStepMessage 
+      });
+
+      console.log('🤖 Agent (Next Step):', response?.output ?? response);
+
+      // Extract transaction bytes for the next step
+      const bytes = this.extractBytesFromAgentResponse(response);
+      const nextStep = this.extractNextStepFromAgentResponse(response);
+
+      if (bytes !== undefined) {
+        // There is another transaction to sign
+        const realBytes = Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes.data);
+        
+        // Store any additional pending steps
+        if (nextStep) {
+          console.log(`📝 Storing additional pending step: ${nextStep.step} for ${nextStep.tool}`);
+          userConnection.pendingStep = nextStep;
+        }
+
+        // Send agent response
+        this.sendMessage(ws, {
+          type: 'AGENT_RESPONSE',
+          message: response?.output ?? response,
+          hasTransaction: true,
+          timestamp: Date.now(),
+        });
+
+        // Send transaction to sign
+        this.sendMessage(ws, {
+          type: 'TRANSACTION_TO_SIGN',
+          transactionBytes: Array.from(realBytes),
+          originalQuery: `Next step: ${pendingStep.step}`,
+          timestamp: Date.now(),
+        });
+      } else {
+        // Only agent response, flow completed
+        this.sendMessage(ws, {
+          type: 'AGENT_RESPONSE',
+          message: response?.output ?? response,
+          hasTransaction: false,
+          timestamp: Date.now(),
+        });
+      }
+
+    } catch (error: any) {
+      console.error('❌ Error executing next step:', error);
+      
+      this.sendMessage(ws, {
+        type: 'SYSTEM_MESSAGE',
+        message: `❌ Error executing next step: ${error.message}`,
+        level: 'error',
+        timestamp: Date.now(),
+      });
+      
+      // Clear pending step on error
+      userConnection.pendingStep = undefined;
+    }
   }
 
   public start(): void {
