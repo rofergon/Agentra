@@ -290,6 +290,7 @@ export const bonzoDepositFlow = async (
         return {
           ...associationResult,
           nextStep: 'deposit',
+          originalParams: params, // Include original parameters for next step
           message: 'WHBAR token association transaction ready for signature',
           instructions: 'Sign this transaction to associate WHBAR token, then initiate the deposit step',
         };
@@ -302,6 +303,7 @@ export const bonzoDepositFlow = async (
         
         return {
           ...depositResult,
+          originalParams: params, // Include original parameters for context
           message: 'HBAR deposit transaction ready for signature',
           instructions: 'Sign this transaction to deposit your HBAR to Bonzo Finance',
         };
