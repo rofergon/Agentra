@@ -1,0 +1,29 @@
+# GitHub repository configuration
+# This file configures various GitHub features for the repository
+
+# Repository topics for better discoverability
+topics:
+  - hedera
+  - defi
+  - ai-agent
+  - blockchain
+  - typescript
+  - langchain
+  - websocket
+  - non-commercial
+  - creative-commons
+
+# Repository description
+description: "Hedera DeFi AI Agent - Open source non-commercial AI agent for Hedera Hashgraph DeFi ecosystem"
+
+# Repository homepage
+homepage: "https://github.com/your-username/Agentra"
+
+# Repository visibility (public/private)
+visibility: public
+
+# Default branch
+default_branch: main
+
+# License information
+license: "CC-BY-NC-SA-4.0" 

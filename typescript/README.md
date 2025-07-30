@@ -1,7 +1,7 @@
 # Hedera Agent Kit
 
 ![npm version](https://badgen.net/npm/v/hedera-agent-kit)
-![license](https://badgen.net/github/license/hedera-dev/hedera-agent-kit)
+![license](https://badgen.net/github/license/your-username/Agentra)
 ![build](https://badgen.net/github/checks/hedera-dev/hedera-agent-kit)
 
 > Build Hedera-powered AI agents **in under a minute**.
@@ -318,7 +318,21 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for details on how to contribute to the
 
 ## License
 
-Apache 2.0
+This project is licensed under the **Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License (CC BY-NC-SA 4.0)**.
+
+### What this means:
+
+✅ **You can:**
+- Share and redistribute the code
+- Adapt and modify the code
+- Use for personal, educational, and research purposes
+
+❌ **You cannot:**
+- Use for commercial purposes without explicit permission
+- Distribute modified versions under a different license
+
+### For Commercial Use:
+If you want to use this project for commercial purposes, please contact the project maintainers for licensing options.
 
 ## Credits
 
