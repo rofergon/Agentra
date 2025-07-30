@@ -25,3 +25,35 @@ export type Configuration = {
   tools?: string[];
   context?: Context;
 };
+
+// Network configuration helpers
+export type HederaNetwork = 'testnet' | 'mainnet';
+
+export const getHederaNetwork = (): HederaNetwork => {
+  const network = process.env.HEDERA_NETWORK?.toLowerCase();
+  if (network !== 'testnet' && network !== 'mainnet') {
+    console.warn(`Invalid HEDERA_NETWORK: ${network}. Defaulting to testnet`);
+    return 'testnet';
+  }
+  return network as HederaNetwork;
+};
+
+export const getEnvVar = (key: string, defaultValue?: string): string => {
+  const value = process.env[key];
+  if (!value && !defaultValue) {
+    throw new Error(`Environment variable ${key} is required but not set`);
+  }
+  return value || defaultValue!;
+};
+
+export const getNetworkSpecificEnvVar = (
+  prefix: string, 
+  suffix: string, 
+  network?: HederaNetwork,
+  defaultValue?: string
+): string => {
+  const currentNetwork = network || getHederaNetwork();
+  const networkUpper = currentNetwork.toUpperCase();
+  const envVarName = `${prefix}_${networkUpper}_${suffix}`;
+  return getEnvVar(envVarName, defaultValue);
+};

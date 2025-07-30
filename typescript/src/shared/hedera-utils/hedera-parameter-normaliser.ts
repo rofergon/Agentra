@@ -6,24 +6,24 @@ import {
   createFungibleTokenParametersNormalised,
   createNonFungibleTokenParameters,
   createNonFungibleTokenParametersNormalised,
-} from '@/shared/parameter-schemas/hts.zod';
-import { transferHbarParameters } from '@/shared/parameter-schemas/has.zod';
+} from '../parameter-schemas/hts.zod';
+import { transferHbarParameters } from '../parameter-schemas/has.zod';
 import {
   createTopicParameters,
   createTopicParametersNormalised,
-} from '@/shared/parameter-schemas/hcs.zod';
+} from '../parameter-schemas/hcs.zod';
 import { Client, Hbar, PublicKey, TokenSupplyType } from '@hashgraph/sdk';
-import { Context } from '@/shared/configuration';
+import { Context } from '../configuration';
 import z from 'zod';
 import {
   accountBalanceQueryParameters,
   accountTokenBalancesQueryParameters,
-} from '@/shared/parameter-schemas/account-query.zod';
-import { IHederaMirrornodeService } from '@/shared/hedera-utils/mirrornode/hedera-mirrornode-service.interface';
-import { toBaseUnit } from '@/shared/hedera-utils/decimals-utils';
+} from '../parameter-schemas/account-query.zod';
+import { IHederaMirrornodeService } from './mirrornode/hedera-mirrornode-service.interface';
+import { toBaseUnit } from './decimals-utils';
 import Long from 'long';
-import { TokenTransferMinimalParams, TransferHbarInput } from '@/shared/hedera-utils/types';
-import { AccountResolver } from '@/shared/utils/account-resolver';
+import { TokenTransferMinimalParams, TransferHbarInput } from './types';
+import { AccountResolver } from '../utils/account-resolver';
 
 export default class HederaParameterNormaliser {
   static async normaliseCreateFungibleTokenParams(
@@ -242,6 +242,31 @@ export default class HederaParameterNormaliser {
     return {
       ...params,
       accountId,
+    };
+  }
+
+  static normaliseBonzoDepositParams(
+    params: z.infer<ReturnType<typeof import('../parameter-schemas/bonzo.zod').bonzoDepositParameters>>,
+    context: Context,
+    client: Client,
+  ) {
+    const { AccountResolver } = require('../utils/account-resolver');
+    const { BONZO_CONFIG } = require('../parameter-schemas/bonzo.zod');
+    const { Hbar } = require('@hashgraph/sdk');
+    
+    const userAccountId = AccountResolver.resolveAccount(params.userAccountId, context, client);
+    
+    // Convert HBAR to tinybars (maintaining precision with string)
+    const hbarAmount = Hbar.fromTinybars(params.hbarAmount * 100_000_000);
+    const hbarAmountInTinybars = hbarAmount.toTinybars().toString();
+    
+    return {
+      ...params,
+      userAccountId,
+      hbarAmountInTinybars,
+      whbarTokenId: BONZO_CONFIG.WHBAR_TOKEN_ID,
+      whbarAddress: BONZO_CONFIG.WHBAR_ADDRESS,
+      lendingPoolAddress: BONZO_CONFIG.LENDING_POOL_ADDRESS,
     };
   }
 }

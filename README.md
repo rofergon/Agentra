@@ -160,4 +160,27 @@ An artificial intelligence agent specialized in the Hedera Hashgraph DeFi ecosys
 The agent will start and be ready to accept WebSocket connections for real-time DeFi analysis and recommendations.
 ---
 
+## 📄 License
+
+This project is licensed under the **Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License (CC BY-NC-SA 4.0)**.
+
+### What this means:
+
+✅ **You can:**
+- Share and redistribute the code
+- Adapt and modify the code
+- Use for personal, educational, and research purposes
+
+❌ **You cannot:**
+- Use for commercial purposes without explicit permission
+- Distribute modified versions under a different license
+
+### For Commercial Use:
+If you want to use this project for commercial purposes, please contact the project maintainers for licensing options.
+
+### Attribution:
+When using this project, please provide appropriate credit and link to this repository.
+
+---
+
 *Built to democratize access to DeFi on Hedera Hashgraph* 🌐 
