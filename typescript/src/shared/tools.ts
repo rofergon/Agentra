@@ -28,6 +28,8 @@ import createTopicTool, { CREATE_TOPIC_TOOL } from './tools/consensus/create-top
 // Import Bonzo tools from new modular structure (API-based)
 import { bonzoApiQueryTool, BONZO_API_QUERY_TOOL } from './tools/defi/bonzo';
 import { bonzoDepositTool, BONZO_DEPOSIT_TOOL } from './tools/defi/bonzoTransaction';
+// Import SaucerSwap tools from new modular structure (API-based)
+import { saucerswapApiQueryTool, SAUCERSWAP_API_QUERY_TOOL } from './tools/defi/saucerswap';
 
 export type Tool = {
   method: string;
@@ -50,6 +52,7 @@ const tools = (context: Context): Tool[] => [
   getTopicMessagesQuery(context),
   bonzoApiQueryTool(context),
   bonzoDepositTool(context),
+  saucerswapApiQueryTool(context),
 ];
 
 export const hederaTools = {
@@ -65,6 +68,7 @@ export const hederaTools = {
   GET_TOPIC_MESSAGES_QUERY_TOOL,
   BONZO_API_QUERY_TOOL,
   BONZO_DEPOSIT_TOOL,
+  SAUCERSWAP_API_QUERY_TOOL,
 };
 
 export default tools;
