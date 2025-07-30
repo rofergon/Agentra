@@ -12,6 +12,8 @@ import WebSocket, { WebSocketServer } from 'ws';
 // Import Bonzo tools from the new modular structure (API-based)
 import { createBonzoLangchainTool } from '../../src/shared/tools/defi/bonzo/langchain-tools';
 import { createBonzoDepositLangchainTool, createBonzoDepositStepLangchainTool } from '../../src/shared/tools/defi/bonzoTransaction/langchain-tools';
+// Import SaucerSwap tools from the new modular structure (API-based)
+import { createSaucerSwapLangchainTool } from '../../src/shared/tools/defi/saucerswap/langchain-tools';
 
 // WebSocket message types
 interface BaseMessage {
@@ -140,8 +142,9 @@ class HederaWebSocketAgent {
 
 **CORE CAPABILITIES:**
 - Hedera Native Operations (HTS, HCS, transfers, queries)
-- DeFi Analytics with Bonzo Finance (real-time market data, account positions)
+- DeFi Analytics with Bonzo Finance (real-time lending market data, account positions)
 - DeFi Transactions with Bonzo Finance (HBAR deposits to earn interest)
+- DeFi Analytics with SaucerSwap (real-time DEX data, trading stats, farm yields)
 
 **RESPONSE BEHAVIOR - CRITICAL:**
 - BE CONCISE and contextual in all responses
@@ -151,17 +154,38 @@ class HederaWebSocketAgent {
 - For follow-up questions: Focus only on NEW information or specific analysis requested
 - Only show complete detailed data when explicitly asked for fresh/updated information
 
+**DeFi PROTOCOL GUIDANCE:**
+
+**Bonzo Finance (Lending Protocol):**
+- Use for: lending rates, borrowing data, account positions, HBAR deposits
+- Keywords: "lending", "borrowing", "deposit", "interest", "APY", "positions", "dashboard"
+- Operations: market_info, account_dashboard, pool_stats, protocol_info
+
+**SaucerSwap (DEX Protocol):**
+- Use for: trading stats, liquidity data, farm yields, SAUCE token info
+- Keywords: "trading", "swap", "farms", "liquidity", "TVL", "volume", "SAUCE", "staking"
+- Operations: general_stats, sss_stats, farms, account_farms
+- Available on mainnet and testnet
+
 **CONVERSATION CONTEXT RULES:**
 - If user asks "what's the best investment option" after seeing market data → Give concise analysis with asset names and key metrics only
 - If user asks for "dashboard" → Show their positions, but summarize market context briefly
 - If user asks follow-up questions → Be direct and specific, don't re-explain everything
 - Always prioritize actionable insights over data dumps
+- For DeFi queries, automatically choose the right protocol based on keywords
 
 **DATA PRESENTATION:**
 - Market overviews: Highlight 2-3 most relevant assets unless full data requested
 - Dashboards: Focus on user's actual positions and next steps
 - Investment advice: Clear recommendations with brief reasoning
 - Technical details: Only when specifically requested
+- SaucerSwap stats: Present TVL, volume, and APY data clearly with USD values
+- Farm data: Focus on emission rates and total staked amounts
+
+**PROTOCOL-SPECIFIC RESPONSES:**
+- Bonzo queries: Emphasize APY rates, utilization, and lending opportunities
+- SaucerSwap queries: Highlight trading volume, liquidity, and farming rewards
+- Cross-protocol analysis: Compare yield opportunities between platforms
 
 Remember: The user can see conversation history. Don't repeat what they already know unless they ask for updated/fresh data.
 
@@ -195,8 +219,15 @@ Current user account: ${userAccountId}`,],
       userAccountId
     );
     
+    // Create SaucerSwap query tool for DEX data and analytics
+    const saucerswapLangchainTool = createSaucerSwapLangchainTool(
+      this.agentClient,
+      { mode: AgentMode.RETURN_BYTES, accountId: userAccountId },
+      userAccountId
+    );
+    
     // Combine all tools
-    const tools = [...hederaToolsList, bonzoLangchainTool, bonzoDepositLangchainTool, bonzoDepositStepLangchainTool];
+    const tools = [...hederaToolsList, bonzoLangchainTool, bonzoDepositLangchainTool, bonzoDepositStepLangchainTool, saucerswapLangchainTool];
 
     // Create agent
     const agent = createToolCallingAgent({
