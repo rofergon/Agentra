@@ -30,6 +30,8 @@ import { bonzoApiQueryTool, BONZO_API_QUERY_TOOL } from './tools/defi/bonzo';
 import { bonzoDepositTool, BONZO_DEPOSIT_TOOL } from './tools/defi/bonzoTransaction';
 // Import SaucerSwap tools from new modular structure (API-based)
 import { saucerswapApiQueryTool, SAUCERSWAP_API_QUERY_TOOL } from './tools/defi/saucerswap';
+// Import SaucerSwap Router tools (contract-based swap quotes)
+import { saucerswapRouterSwapQuoteTool, SAUCERSWAP_ROUTER_SWAP_QUOTE_TOOL } from './tools/defi/saucerswap-swap';
 
 export type Tool = {
   method: string;
@@ -53,6 +55,7 @@ const tools = (context: Context): Tool[] => [
   bonzoApiQueryTool(context),
   bonzoDepositTool(context),
   saucerswapApiQueryTool(context),
+  saucerswapRouterSwapQuoteTool(context),
 ];
 
 export const hederaTools = {
@@ -69,6 +72,7 @@ export const hederaTools = {
   BONZO_API_QUERY_TOOL,
   BONZO_DEPOSIT_TOOL,
   SAUCERSWAP_API_QUERY_TOOL,
+  SAUCERSWAP_ROUTER_SWAP_QUOTE_TOOL,
 };
 
 export default tools;
