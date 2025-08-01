@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { Context } from '../../../configuration';
-import { Client, TokenAssociateTransaction, ContractExecuteTransaction, ContractFunctionParameters, Hbar, AccountId, ContractId } from '@hashgraph/sdk';
+import { Client, TokenAssociateTransaction, ContractExecuteTransaction, ContractFunctionParameters, Hbar, AccountId, ContractId, AccountInfoQuery } from '@hashgraph/sdk';
 import { handleTransaction } from '../../../strategies/tx-mode-strategy';
 import Long from 'long';
 import { bonzoDepositParameters, BONZO_CONFIG } from '../../../parameter-schemas/bonzo.zod';
@@ -24,6 +24,64 @@ export const BONZO_DEPOSIT_OPERATIONS = {
   DEPOSIT_HBAR: 'deposit_hbar',
   FULL_DEPOSIT_FLOW: 'full_deposit_flow',
 } as const;
+
+/**
+ * Get the real EVM address for a Hedera account using Mirror Node API
+ * Returns the EVM Address Alias if available, otherwise falls back to Account Number Alias
+ */
+const getUserEvmAddress = async (
+  client: Client,
+  accountId: string,
+): Promise<string> => {
+  try {
+    console.log(`🔍 Querying Mirror Node for account ${accountId}...`);
+    
+    // Use Mirror Node API to get the real EVM address
+    const mirrorNodeUrl = process.env.HEDERA_NETWORK === 'mainnet' 
+      ? 'https://mainnet-public.mirrornode.hedera.com'
+      : 'https://testnet.mirrornode.hedera.com';
+    
+    const response = await fetch(`${mirrorNodeUrl}/api/v1/accounts/${accountId}`);
+    
+    if (!response.ok) {
+      throw new Error(`Mirror Node API error: ${response.status} ${response.statusText}`);
+    }
+    
+    const accountData = await response.json();
+    
+    // Check if the account has a real EVM address
+    if (accountData.evm_address && accountData.evm_address !== '0x0000000000000000000000000000000000000000') {
+      const evmAddress = accountData.evm_address;
+      console.log(`✅ Found real EVM Address from Mirror Node: ${evmAddress}`);
+      return evmAddress;
+    }
+    
+    // Check if there's an alias field that contains the EVM address
+    if (accountData.alias && accountData.alias.length > 0) {
+      // Try to convert alias bytes to EVM address format
+      const aliasHex = accountData.alias;
+      if (aliasHex.length === 42 && aliasHex.startsWith('0x')) {
+        console.log(`✅ Found EVM Address from alias: ${aliasHex}`);
+        return aliasHex;
+      }
+    }
+    
+    console.log(`🔄 Mirror Node response:`, {
+      account: accountData.account,
+      evm_address: accountData.evm_address,
+      alias: accountData.alias
+    });
+    
+  } catch (error) {
+    console.error(`❌ Error querying Mirror Node for ${accountId}:`, error);
+  }
+  
+  // Fallback to account number alias
+  const fallbackAddress = AccountId.fromString(accountId).toSolidityAddress();
+  console.log(`⚠️ Fallback to Account Number Alias: 0x${fallbackAddress}`);
+  
+  return `0x${fallbackAddress}`;
+};
 
 /**
  * Simple parameter normalizer for Bonzo deposits
@@ -80,11 +138,12 @@ This tool enables HBAR deposits into Bonzo Finance DeFi protocol on Hedera Mainn
 - hbarAmount (number, required): Amount of HBAR to deposit (e.g., 1.5 for 1.5 HBAR)
 - ${userAccountDesc}
 - associateWhbar (boolean, optional): Whether to associate WHBAR token if not already associated (default: true)
-- referralCode (number, optional): Referral code for the deposit (0-65535, default: 0)
+- referralCode (number, optional): Referral code for the deposit (defaults to official Bonzo frontend value)
 - transactionMemo (string, optional): Optional memo for the transactions
 
 **Contract Addresses (Hedera Mainnet):**
 - LendingPool: ${BONZO_CONFIG.LENDING_POOL_ADDRESS}
+- LendingPool Contract ID: ${BONZO_CONFIG.LENDING_POOL_CONTRACT_ID}
 - WHBAR Token: ${BONZO_CONFIG.WHBAR_TOKEN_ID} (${BONZO_CONFIG.WHBAR_ADDRESS})
 
 **What you'll receive:**
@@ -170,19 +229,22 @@ export const executeBonzoDeposit = async (
 
     console.log(`💰 Depositing ${params.hbarAmount} HBAR to Bonzo Finance...`);
     console.log(`📍 LendingPool: ${normalisedParams.lendingPoolAddress}`);
+    console.log(`🏢 LendingPool Contract ID: ${BONZO_CONFIG.LENDING_POOL_CONTRACT_ID}`);
     console.log(`🏦 Account: ${normalisedParams.userAccountId}`);
 
-    // Convert account ID to Solidity address format for contract interaction
-    const userSolidityAddress = AccountId.fromString(normalisedParams.userAccountId).toSolidityAddress();
+    // Get the real EVM address for the user (not just account number alias)
+    // This should be the actual EVM address that Bonzo Finance recognizes
+    const onBehalfOfAddress = await getUserEvmAddress(client, normalisedParams.userAccountId);
+    console.log(`🔄 User EVM Address (onBehalfOf): ${onBehalfOfAddress}`);
     
     const functionParameters = new ContractFunctionParameters()
       .addAddress(normalisedParams.whbarAddress)
       .addUint256(Long.fromString(normalisedParams.hbarAmountInTinybars))
-      .addAddress(userSolidityAddress)
-      .addUint16(params.referralCode || 0);
+      .addAddress(onBehalfOfAddress)
+      .addUint16(params.referralCode || 0); // Use uint16 with default value 0
 
-    // Convert EVM address to Hedera ContractId format
-    const contractId = ContractId.fromSolidityAddress(normalisedParams.lendingPoolAddress);
+    // Use the Contract ID directly from configuration instead of converting EVM address
+    const contractId = ContractId.fromString(BONZO_CONFIG.LENDING_POOL_CONTRACT_ID);
     
     const tx = new ContractExecuteTransaction()
       .setContractId(contractId)
