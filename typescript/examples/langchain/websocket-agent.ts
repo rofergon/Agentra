@@ -14,6 +14,8 @@ import { createBonzoLangchainTool } from '../../src/shared/tools/defi/bonzo/lang
 import { createBonzoDepositLangchainTool, createBonzoDepositStepLangchainTool } from '../../src/shared/tools/defi/bonzoTransaction/langchain-tools';
 // Import SaucerSwap tools from the new modular structure (API-based)
 import { createSaucerSwapLangchainTool } from '../../src/shared/tools/defi/saucerswap/langchain-tools';
+// Import SaucerSwap Router tools (contract-based swap quotes)
+import { createSaucerswapRouterSwapQuoteLangchainTool } from '../../src/shared/tools/defi/saucerswap-swap/langchain-tools';
 
 // WebSocket message types
 interface BaseMessage {
@@ -209,6 +211,14 @@ class HederaWebSocketAgent {
 - Available on mainnet and testnet
 - Icons: 🔄 🌾 💧 📊 🪙
 
+**💱 SaucerSwap Router (Swap Quotes):**
+- Use for: real-time swap quotes, price calculations, trading routes
+- Keywords: "quote", "swap price", "exchange rate", "how much", "convert", "trade amount"
+- Operations: get_amounts_out (output from input), get_amounts_in (input from output)
+- Direct contract interaction with UniswapV2Router02
+- Supports multi-hop routing and automatic token conversion
+- Icons: 💱 📊 🔄 💰 ⚡
+
 **CONVERSATION CONTEXT RULES:**
 - If user asks "what's the best investment option" after seeing market data → Give concise analysis with asset names and key metrics only using 💡 and 🎯
 - If user asks for "dashboard" → Show their positions using 📋 and 👤, but summarize market context briefly
@@ -223,10 +233,12 @@ class HederaWebSocketAgent {
 - 🔍 Technical details: Use 🔧⚙️ only when specifically requested
 - 📊 SaucerSwap stats: Present TVL, volume, and APY data with 💧📈🪙 clearly with USD values
 - 🌾 Farm data: Use 🌾💰📈 for emission rates and total staked amounts
+- 💱 Swap quotes: Present input/output amounts with 💱🔄💰 and include exchange rates clearly
 
 **PROTOCOL-SPECIFIC RESPONSES:**
 - 🏦 Bonzo queries: Emphasize APY rates 📈, utilization 📊, and lending opportunities 💰
 - 🔄 SaucerSwap queries: Highlight trading volume 📊, liquidity 💧, and farming rewards 🌾
+- 💱 SaucerSwap Router quotes: Present clear exchange rates 💱, amounts 💰, and route details 🔄
 - ⚖️ Cross-protocol analysis: Compare yield opportunities between platforms using 📈💰🎯
 
 **EXAMPLE RESPONSE FORMAT:**
@@ -276,8 +288,15 @@ Current user account: ${userAccountId}`,],
       userAccountId
     );
     
+    // Create SaucerSwap Router tool for swap quotes using contract interaction
+    const saucerswapRouterSwapQuoteLangchainTool = createSaucerswapRouterSwapQuoteLangchainTool(
+      this.agentClient,
+      { mode: AgentMode.RETURN_BYTES, accountId: userAccountId },
+      userAccountId
+    );
+    
     // Combine all tools
-    const tools = [...hederaToolsList, bonzoLangchainTool, bonzoDepositLangchainTool, bonzoDepositStepLangchainTool, saucerswapLangchainTool];
+    const tools = [...hederaToolsList, bonzoLangchainTool, bonzoDepositLangchainTool, bonzoDepositStepLangchainTool, saucerswapLangchainTool, saucerswapRouterSwapQuoteLangchainTool];
 
     // Create agent
     const agent = createToolCallingAgent({
