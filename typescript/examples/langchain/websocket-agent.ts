@@ -18,6 +18,8 @@ import { createSaucerSwapLangchainTool } from '../../src/shared/tools/defi/sauce
 import { createSaucerswapRouterSwapQuoteLangchainTool } from '../../src/shared/tools/defi/SaucerSwap-Quote/langchain-tools';
 // Import SaucerSwap Router swap execution tools
 import { createSaucerSwapRouterSwapLangchainTool } from '../../src/shared/tools/defi/Saucer-Swap/langchain-tools';
+// Import SaucerSwap Infinity Pool staking tools
+import { createSaucerswapInfinityPoolLangchainTool, createSaucerswapInfinityPoolStepLangchainTool } from '../../src/shared/tools/defi/SaucerSwap-InfinityPool/langchain-tools';
 
 // WebSocket message types
 interface BaseMessage {
@@ -149,6 +151,7 @@ class HederaWebSocketAgent {
 - 📊 DeFi Analytics with Bonzo Finance (real-time lending market data, account positions)
 - 💰 DeFi Transactions with Bonzo Finance (HBAR deposits to earn interest)
 - 🔄 DeFi Analytics with SaucerSwap (real-time DEX data, trading stats, farm yields)
+- 🥩 DeFi Staking with SaucerSwap Infinity Pool (SAUCE staking to earn xSAUCE rewards)
 
 **RESPONSE FORMATTING - USE ICONS CONSISTENTLY:**
 - 💡 Use icons to make responses more visual and intuitive
@@ -229,6 +232,25 @@ class HederaWebSocketAgent {
 - Built-in slippage protection and deadline management
 - Supports SAUCE token (0.0.731861 mainnet / 0.0.456858 testnet)
 - Icons: 🔄 💱 💰 🚀 ⚡
+
+**🥩 SaucerSwap Infinity Pool (SAUCE Staking):**
+- Use for: staking SAUCE tokens to earn xSAUCE, unstaking xSAUCE for SAUCE + rewards
+- Keywords: "stake", "staking", "SAUCE staking", "xSAUCE", "Infinity Pool", "stake SAUCE", "unstake"
+- Operations: associate_tokens, approve_sauce, stake_sauce, unstake_xsauce, full_stake_flow, full_unstake_flow
+- **CRITICAL**: For new staking requests, ALWAYS use "full_stake_flow" operation ONLY
+- **NEVER** execute multiple operations simultaneously - the flow handles steps automatically
+- Multi-step flow: Token association → SAUCE approval → Staking (earn xSAUCE)
+- Staking rewards from SaucerSwap trading fees automatically compound
+- No lock-up period - unstake anytime to receive SAUCE + rewards
+- MotherShip contract (0.0.1460199) handles SAUCE → xSAUCE conversions
+- Icons: 🥩 💰 📈 🎯 ⏳
+
+**🚨 INFINITY POOL OPERATION RULES:**
+- When user says "stake SAUCE" → Use ONLY saucerswap_infinity_pool_tool with operation "full_stake_flow"
+- DO NOT call multiple tools or operations simultaneously
+- The full_stake_flow will handle all steps automatically (association → approval → staking)
+- Each step requires user signature, then proceeds automatically to next step
+- NEVER manually call associate_tokens, approve_sauce, and stake_sauce separately
 
 **CONVERSATION CONTEXT RULES:**
 - If user asks "what's the best investment option" after seeing market data → Give concise analysis with asset names and key metrics only using 💡 and 🎯
@@ -313,8 +335,21 @@ Current user account: ${userAccountId}`,],
       userAccountId
     );
     
+    // Create SaucerSwap Infinity Pool staking tools
+    const saucerswapInfinityPoolLangchainTool = createSaucerswapInfinityPoolLangchainTool(
+      this.agentClient,
+      { mode: AgentMode.RETURN_BYTES, accountId: userAccountId },
+      userAccountId
+    );
+    
+    const saucerswapInfinityPoolStepLangchainTool = createSaucerswapInfinityPoolStepLangchainTool(
+      this.agentClient,
+      { mode: AgentMode.RETURN_BYTES, accountId: userAccountId },
+      userAccountId
+    );
+    
     // Combine all tools
-    const tools = [...hederaToolsList, bonzoLangchainTool, bonzoDepositLangchainTool, bonzoDepositStepLangchainTool, saucerswapLangchainTool, saucerswapRouterSwapQuoteLangchainTool, saucerswapRouterSwapLangchainTool];
+    const tools = [...hederaToolsList, bonzoLangchainTool, bonzoDepositLangchainTool, bonzoDepositStepLangchainTool, saucerswapLangchainTool, saucerswapRouterSwapQuoteLangchainTool, saucerswapRouterSwapLangchainTool, saucerswapInfinityPoolLangchainTool, saucerswapInfinityPoolStepLangchainTool];
 
     // Create agent
     const agent = createToolCallingAgent({
@@ -601,8 +636,43 @@ Current user account: ${userAccountId}`,],
       try {
         const obsObj = typeof obs === 'string' ? JSON.parse(obs) : obs;
         
-        // Check if this is a Bonzo deposit flow with next step
-        if (obsObj.nextStep && obsObj.step && obsObj.operation) {
+        // Check if this is a SaucerSwap Infinity Pool flow with next step (CHECK FIRST!)
+        if (obsObj.nextStep && (
+          obsObj.toolType === 'infinity_pool' ||
+          obsObj.protocol === 'saucerswap' ||
+          obsObj.step === 'token_association' || 
+          obsObj.step === 'token_approval' || 
+          obsObj.step === 'stake' || 
+          obsObj.operation?.includes('infinity_pool') || 
+          obsObj.operation?.includes('sauce') ||
+          obsObj.operation?.includes('associate_tokens') ||
+          obsObj.operation?.includes('approve_sauce') ||
+          obsObj.operation?.includes('stake_sauce') ||
+          (obsObj.operation && (obsObj.operation === 'associate_tokens' || obsObj.operation === 'approve_sauce' || obsObj.operation === 'stake_sauce'))
+        )) {
+          console.log('🎯 DETECTED INFINITY POOL NEXT STEP:');
+          console.log(`   Tool Type: ${obsObj.toolType}`);
+          console.log(`   Protocol: ${obsObj.protocol}`);
+          console.log(`   Step: ${obsObj.step}`);
+          console.log(`   Operation: ${obsObj.operation}`);
+          console.log(`   NextStep: ${obsObj.nextStep}`);
+          console.log('🎯 =====================================');
+          return {
+            tool: obsObj.toolInfo?.name || 'saucerswap_infinity_pool_tool',
+            operation: obsObj.operation || 'infinity_pool_operation',
+            step: obsObj.nextStep,
+            originalParams: obsObj.originalParams || {},
+            nextStepInstructions: obsObj.instructions || obsObj.message
+          };
+        }
+        
+        // Check if this is a Bonzo deposit flow with next step (MORE SPECIFIC NOW)
+        if (obsObj.nextStep && obsObj.step && obsObj.operation && 
+            (obsObj.operation.includes('bonzo') || obsObj.operation.includes('deposit') || obsObj.step === 'deposit')) {
+          console.log('🎯 DETECTED BONZO NEXT STEP:');
+          console.log(`   Step: ${obsObj.step}`);
+          console.log(`   Operation: ${obsObj.operation}`);
+          console.log(`   NextStep: ${obsObj.nextStep}`);
           return {
             tool: obsObj.toolInfo?.name || 'bonzo_deposit_tool',
             operation: obsObj.operation,
@@ -635,6 +705,14 @@ Current user account: ${userAccountId}`,],
         // For Bonzo deposit flow, trigger the deposit step only
         const params = pendingStep.originalParams;
         nextStepMessage = `Use bonzo_deposit_step_tool to deposit ${params.hbarAmount} HBAR for account ${userConnection.userAccountId} with referral code ${params.referralCode || 0}`;
+      } else if (pendingStep.tool === 'saucerswap_infinity_pool_tool' && pendingStep.step === 'approval') {
+        // For Infinity Pool flow, trigger the approval step after token association
+        const params = pendingStep.originalParams;
+        nextStepMessage = `Execute SAUCE approval for staking: Use saucerswap_infinity_pool_tool with operation "approve_sauce", sauceAmount ${params.sauceAmount}, userAccountId "${userConnection.userAccountId}"`;
+      } else if (pendingStep.tool === 'saucerswap_infinity_pool_tool' && pendingStep.step === 'stake') {
+        // For Infinity Pool flow, trigger the staking step after approval
+        const params = pendingStep.originalParams;
+        nextStepMessage = `Use saucerswap_infinity_pool_step_tool to stake ${params.sauceAmount} SAUCE for account ${userConnection.userAccountId}`;
       } else {
         // Generic next step execution
         nextStepMessage = `Execute ${pendingStep.step} step for ${pendingStep.tool}`;
