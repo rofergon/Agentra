@@ -15,7 +15,9 @@ import { createBonzoDepositLangchainTool, createBonzoDepositStepLangchainTool } 
 // Import SaucerSwap tools from the new modular structure (API-based)
 import { createSaucerSwapLangchainTool } from '../../src/shared/tools/defi/saucerswap/langchain-tools';
 // Import SaucerSwap Router tools (contract-based swap quotes)
-import { createSaucerswapRouterSwapQuoteLangchainTool } from '../../src/shared/tools/defi/saucerswap-swap/langchain-tools';
+import { createSaucerswapRouterSwapQuoteLangchainTool } from '../../src/shared/tools/defi/SaucerSwap-Quote/langchain-tools';
+// Import SaucerSwap Router swap execution tools
+import { createSaucerSwapRouterSwapLangchainTool } from '../../src/shared/tools/defi/Saucer-Swap/langchain-tools';
 
 // WebSocket message types
 interface BaseMessage {
@@ -219,6 +221,15 @@ class HederaWebSocketAgent {
 - Supports multi-hop routing and automatic token conversion
 - Icons: 💱 📊 🔄 💰 ⚡
 
+**🔄 SaucerSwap Router (Token Swaps):**
+- Use for: executing real token swaps, HBAR↔Token exchanges, Token↔Token trades
+- Keywords: "swap", "exchange", "trade", "buy", "sell", "convert tokens", "execute swap"
+- Operations: swap_exact_hbar_for_tokens, swap_exact_tokens_for_hbar, swap_exact_tokens_for_tokens
+- Real transaction creation using UniswapV2Router02 contract
+- Built-in slippage protection and deadline management
+- Supports SAUCE token (0.0.731861 mainnet / 0.0.456858 testnet)
+- Icons: 🔄 💱 💰 🚀 ⚡
+
 **CONVERSATION CONTEXT RULES:**
 - If user asks "what's the best investment option" after seeing market data → Give concise analysis with asset names and key metrics only using 💡 and 🎯
 - If user asks for "dashboard" → Show their positions using 📋 and 👤, but summarize market context briefly
@@ -295,8 +306,15 @@ Current user account: ${userAccountId}`,],
       userAccountId
     );
     
+    // Create SaucerSwap Router tool for actual token swaps using UniswapV2Router02
+    const saucerswapRouterSwapLangchainTool = createSaucerSwapRouterSwapLangchainTool(
+      this.agentClient,
+      { mode: AgentMode.RETURN_BYTES, accountId: userAccountId },
+      userAccountId
+    );
+    
     // Combine all tools
-    const tools = [...hederaToolsList, bonzoLangchainTool, bonzoDepositLangchainTool, bonzoDepositStepLangchainTool, saucerswapLangchainTool, saucerswapRouterSwapQuoteLangchainTool];
+    const tools = [...hederaToolsList, bonzoLangchainTool, bonzoDepositLangchainTool, bonzoDepositStepLangchainTool, saucerswapLangchainTool, saucerswapRouterSwapQuoteLangchainTool, saucerswapRouterSwapLangchainTool];
 
     // Create agent
     const agent = createToolCallingAgent({
