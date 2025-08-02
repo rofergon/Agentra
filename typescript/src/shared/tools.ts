@@ -31,7 +31,7 @@ import { bonzoDepositTool, BONZO_DEPOSIT_TOOL } from './tools/defi/bonzoTransact
 // Import SaucerSwap tools from new modular structure (API-based)
 import { saucerswapApiQueryTool, SAUCERSWAP_API_QUERY_TOOL } from './tools/defi/saucerswap';
 // Import SaucerSwap Router tools (contract-based swap quotes)
-import { saucerswapRouterSwapQuoteTool, SAUCERSWAP_ROUTER_SWAP_QUOTE_TOOL } from './tools/defi/saucerswap-swap';
+import { saucerswapRouterSwapQuoteTool, SAUCERSWAP_ROUTER_SWAP_QUOTE_TOOL } from './tools/defi/SaucerSwap-Quote';
 
 export type Tool = {
   method: string;
