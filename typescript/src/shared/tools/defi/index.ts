@@ -5,7 +5,10 @@ export * from './bonzo';
 export * from './saucerswap';
 
 // Export SaucerSwap Router swap quote tools
-export * from './saucerswap-swap';
+export * from './SaucerSwap-Quote';
+
+// Export SaucerSwap Router swap execution tools
+export * from './Saucer-Swap';
 
 // Future DeFi protocol exports:
 // export * from './uniswap';
