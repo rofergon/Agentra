@@ -79,7 +79,9 @@ Current user: ${userAccountId}`,
       
       fees: z.array(z.number()).optional().describe('Array of pool fees in hundredths of a bip (e.g., [3000] for 0.30%). Length must be tokenPath.length - 1. Defaults to [3000] for all hops if not provided.'),
       
-      network: z.enum(['mainnet', 'testnet']).optional().default('testnet').describe('Network to query (defaults to testnet)'),
+      network: z.enum(['mainnet', 'testnet']).optional().default(
+        (process.env.HEDERA_NETWORK as 'mainnet' | 'testnet') || 'mainnet'
+      ).describe('Network to query (defaults to HEDERA_NETWORK from .env)'),
     }),
     
     func: async (params: any) => {
