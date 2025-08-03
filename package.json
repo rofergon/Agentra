@@ -4,10 +4,10 @@
   "description": "Hedera WebSocket Agent deployment for Railway",
   "main": "typescript/examples/langchain/websocket-agent.ts",
   "scripts": {
-    "build": "echo 'Installing dependencies...' && npm run install:deps && echo 'Build complete'",
-    "install:deps": "cd typescript && npm install && cd examples/langchain && npm install",
-    "start": "cd typescript/examples/langchain && npx ts-node websocket-agent.ts",
-    "dev": "cd typescript/examples/langchain && npm run start:websocket",
+    "build": "echo Installing dependencies... & npm run install:deps & echo Build complete",
+    "install:deps": "cd typescript & npm install & cd examples/langchain & npm install",
+    "start": "cd typescript/examples/langchain & npx ts-node websocket-agent.ts",
+    "dev": "cd typescript/examples/langchain & npm run start:websocket",
     "postinstall": "npm run install:deps"
   },
   "engines": {
