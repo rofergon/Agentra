@@ -1,79 +1,79 @@
 # 🚀 Hedera WebSocket Agent - Railway Deployment
 
-Este repositorio contiene un agente WebSocket para Hedera que se puede desplegar fácilmente en Railway.
+This repository contains a Hedera WebSocket agent that can be easily deployed on Railway.
 
-## 📋 Pre-requisitos
+## 📋 Prerequisites
 
-- Cuenta en [Railway](https://railway.app)
-- API Key de OpenAI
-- (Opcional) Cuenta de Hedera Testnet
+- Railway account at [Railway](https://railway.app)
+- OpenAI API Key
+- (Optional) Hedera Testnet account
 
-## 🚂 Despliegue en Railway
+## 🚂 Railway Deployment
 
-### Opción 1: Deploy Button (Más Fácil)
+### Option 1: Deploy Button (Easiest)
 [![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new/template)
 
-### Opción 2: Desde GitHub
-1. Ve a [Railway](https://railway.app)
-2. Crea nuevo proyecto → **Deploy from GitHub repo**
-3. Selecciona este repositorio
-4. **NO** especifiques Root Directory (déjalo vacío)
+### Option 2: From GitHub
+1. Go to [Railway](https://railway.app)
+2. Create new project → **Deploy from GitHub repo**
+3. Select this repository
+4. **DO NOT** specify Root Directory (leave it empty)
 
-## ⚙️ Variables de Entorno Requeridas
+## ⚙️ Required Environment Variables
 
-En Railway Dashboard → Variables, agrega:
+In Railway Dashboard → Variables, add:
 
 ```env
-OPENAI_API_KEY=tu_clave_openai_aquí
+OPENAI_API_KEY=your_openai_key_here
 PORT=8080
 NODE_ENV=production
 ```
 
-### Variables Opcionales:
+### Optional Variables:
 ```env
 HEDERA_NETWORK=testnet
 HEDERA_ACCOUNT_ID=0.0.12345
-HEDERA_PRIVATE_KEY=tu_private_key
+HEDERA_PRIVATE_KEY=your_private_key
 ```
 
-## 🔧 Configuración Automática
+## 🔧 Automatic Configuration
 
-Railway detecta automáticamente:
+Railway automatically detects:
 - **Build Command**: `npm run build`
 - **Start Command**: `npm start`
 - **Port**: `8080`
 
 ## 🌐 Endpoints
 
-Una vez desplegado:
+Once deployed:
 - **Health Check**: `https://tu-app.railway.app/health`
 - **WebSocket**: `wss://tu-app.railway.app`
 
 ## 🐛 Debugging
 
-Para ver logs:
+To view logs:
 ```bash
 railway logs
 ```
 
-Para desarrollo local:
+For local development:
 ```bash
 npm run dev
 ```
 
-## 📁 Estructura del Proyecto
+## 📁 Project Structure
 
 ```
 /
-├── package.json (configuración principal)
-├── railway.json (configuración de Railway)
+├── package.json (main configuration)
+├── railway.json (Railway configuration)
 ├── typescript/
-│   ├── src/shared/ (código compartido)
+│   ├── src/shared/ (shared code)
 │   └── examples/langchain/
-│       └── websocket-agent.ts (agente principal)
+│       └── websocket-agent.ts (main agent)
 ```
 
-## 🔗 URLs Útiles
+## 🔗 Useful URLs
 
 - [Railway Docs](https://docs.railway.app)
 - [Hedera Docs](https://docs.hedera.com)
