@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+*/node_modules/
+npm-debug.log*
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Build outputs
+dist/
+*/dist/
+build/
+
+# Logs  
+*.log
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+README.md
+RAILWAY_DEPLOY.md
+docs/
+
+# Development files
+.cursor/
+.husky/
+hello-hedera-agent-kit/
+
+# Other project directories not needed
+modelcontextprotocol/
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Coverage
+coverage/

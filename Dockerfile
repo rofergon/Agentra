@@ -13,11 +13,11 @@ RUN npm install
 # Copy the typescript directory
 COPY typescript/ ./typescript/
 
-# Install typescript dependencies
-RUN cd typescript && npm install
+# Install typescript dependencies (ignore platform-specific packages)
+RUN cd typescript && npm install --ignore-platform --no-optional
 
 # Install langchain example dependencies  
-RUN cd typescript/examples/langchain && npm install
+RUN cd typescript/examples/langchain && npm install --ignore-platform
 
 # Copy environment example
 COPY .env.example ./
