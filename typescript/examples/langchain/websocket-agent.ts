@@ -9,6 +9,7 @@ import { AgentExecutor, createToolCallingAgent } from 'langchain/agents';
 import { BufferMemory } from 'langchain/memory';
 import { Client } from '@hashgraph/sdk';
 import WebSocket, { WebSocketServer } from 'ws';
+import * as http from 'http';
 // Import Bonzo tools from the new modular structure (API-based)
 import { createBonzoLangchainTool } from '../../src/shared/tools/defi/bonzo/langchain-tools';
 import { createBonzoDepositLangchainTool, createBonzoDepositStepLangchainTool } from '../../src/shared/tools/defi/bonzoTransaction/langchain-tools';
@@ -110,12 +111,31 @@ interface UserConnection {
 
 class HederaWebSocketAgent {
   private wss: WebSocketServer;
+  private httpServer: http.Server;
   private llm!: ChatOpenAI;
   private agentClient!: Client;
   private userConnections: Map<WebSocket, UserConnection> = new Map();
 
   constructor(port: number = 8080) {
-    this.wss = new WebSocketServer({ port });
+    // Create HTTP server for health checks
+    this.httpServer = http.createServer((req, res) => {
+      if (req.url === '/health') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ 
+          status: 'healthy', 
+          service: 'hedera-websocket-agent',
+          timestamp: new Date().toISOString(),
+          connections: this.userConnections.size
+        }));
+      } else {
+        res.writeHead(404, { 'Content-Type': 'text/plain' });
+        res.end('WebSocket Agent - Use WebSocket connection on port ' + port);
+      }
+    });
+
+    // Create WebSocket server on the same HTTP server
+    this.wss = new WebSocketServer({ server: this.httpServer });
+    this.httpServer.listen(port);
     this.setupWebSocketServer();
   }
 
@@ -1012,8 +1032,11 @@ Current user account: ${userAccountId}`,],
   }
 
   public start(): void {
+    const port = (this.httpServer.address() as any)?.port || 8080;
     console.log(`
-::HEDERA:: Hedera WebSocket Agent running on ws://localhost:${this.wss.options.port}
+::HEDERA:: Hedera WebSocket Agent running on:
+🌐 HTTP Health Check: http://localhost:${port}/health
+🔌 WebSocket Server: ws://localhost:${port}
 
 📝 Supported message types:
    - CONNECTION_AUTH: Authenticate with account ID
@@ -1048,7 +1071,8 @@ To exit, press Ctrl+C
 
   public stop(): void {
     this.wss.close();
-    console.log('🛑 WebSocket Server stopped');
+    this.httpServer.close();
+    console.log('🛑 WebSocket Server and HTTP Server stopped');
   }
 }
 
