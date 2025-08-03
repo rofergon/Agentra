@@ -214,7 +214,7 @@ const agent = new HederaWebSocketAgent(8080); // Custom port
 
 ### Client Logs
 ```bash
-🔗 Connected to Hedera WebSocket Agent
+::HEDERA:: Connected to Hedera WebSocket Agent
 🔔 System [info]: Connected to Hedera Agent
 🤖 Agent: Your current balance is 100 HBAR
 ```
