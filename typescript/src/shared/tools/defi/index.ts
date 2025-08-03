@@ -2,7 +2,7 @@
 export * from './bonzo';
 
 // Export all SaucerSwap Finance tools
-export * from './saucerswap';
+export * from './saucerswap-api';
 
 // Export SaucerSwap Router swap quote tools
 export * from './SaucerSwap-Quote';
