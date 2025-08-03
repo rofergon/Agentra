@@ -29,7 +29,7 @@ import createTopicTool, { CREATE_TOPIC_TOOL } from './tools/consensus/create-top
 import { bonzoApiQueryTool, BONZO_API_QUERY_TOOL } from './tools/defi/bonzo';
 import { bonzoDepositTool, BONZO_DEPOSIT_TOOL } from './tools/defi/bonzoTransaction';
 // Import SaucerSwap tools from new modular structure (API-based)
-import { saucerswapApiQueryTool, SAUCERSWAP_API_QUERY_TOOL } from './tools/defi/saucerswap';
+import { saucerswapApiQueryTool, SAUCERSWAP_API_QUERY_TOOL } from './tools/defi/saucerswap-api';
 // Import SaucerSwap Router tools (contract-based swap quotes)
 // TODO: Fix SaucerSwap-Quote tool export issue
 // import saucerswapRouterSwapQuoteTool, { SAUCERSWAP_ROUTER_SWAP_QUOTE_TOOL } from './tools/defi/SaucerSwap-Quote';
