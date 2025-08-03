@@ -115,6 +115,9 @@ class HederaWebSocketAgent {
   private llm!: ChatOpenAI;
   private agentClient!: Client;
   private userConnections: Map<WebSocket, UserConnection> = new Map();
+  
+  // 🧠 MVP: Debug flag to force memory clear on each message (for debugging in production)
+  private readonly FORCE_CLEAR_MEMORY_ON_MESSAGE = process.env.FORCE_CLEAR_MEMORY === 'true';
 
   constructor(port: number = 8080) {
     // Create HTTP server for health checks
@@ -141,6 +144,8 @@ class HederaWebSocketAgent {
 
   async initialize(): Promise<void> {
     console.log('🚀 Initializing Hedera WebSocket Agent...');
+    console.log(`🧠 MVP Memory Debug Mode: ${this.FORCE_CLEAR_MEMORY_ON_MESSAGE ? 'ENABLED' : 'DISABLED'}`);
+    console.log(`📊 Memory will be cleared ${this.FORCE_CLEAR_MEMORY_ON_MESSAGE ? 'on every message' : 'only on new connections'}`);
 
     // Configuración OpenAI
     this.llm = new ChatOpenAI({
@@ -154,6 +159,8 @@ class HederaWebSocketAgent {
   }
 
   private async createUserConnection(ws: WebSocket, userAccountId: string): Promise<UserConnection> {
+    console.log(`🆕 Creating NEW user connection for account: ${userAccountId}`);
+    
     // Available tools
     const {
       CREATE_FUNGIBLE_TOKEN_TOOL,
@@ -250,6 +257,8 @@ Use these exact markers for platform branding (frontend will replace with real l
 - ::SAUCERSWAP:: **SaucerSwap** (DEX & Farming):
 
 **RESPONSE BEHAVIOR - CRITICAL:**
+- EXECUTE TOOLS IMMEDIATELY without status messages like "Fetching data..." or "Please hold on"
+- NEVER provide intermediary status updates - call tools and respond with results directly
 - BE CONCISE and contextual in all responses
 - ALWAYS use relevant icons to enhance readability
 - Use markdown formatting with icons for headers and key points
@@ -258,6 +267,7 @@ Use these exact markers for platform branding (frontend will replace with real l
 - For investment advice: Give clear recommendations WITHOUT repeating all market details
 - For follow-up questions: Focus only on NEW information or specific analysis requested
 - Only show complete detailed data when explicitly asked for fresh/updated information
+- RESPOND IN SINGLE MESSAGE: Call the appropriate tool and present results immediately
 
 **MARKDOWN FORMATTING RULES:**
 Use this hierarchical structure for organized responses:
@@ -288,8 +298,9 @@ Use H1 (#) for main sections and H2 (##) for platforms with bullets for features
 
 **::BONZO:: Bonzo Finance (Lending Protocol):**
 - Use for: lending rates, borrowing data, account positions, HBAR deposits
-- Keywords: "lending", "borrowing", "deposit", "interest", "APY", "positions", "dashboard"
+- Keywords: "lending", "borrowing", "deposit", "interest", "APY", "positions", "dashboard", "rates", "statistics", "market"
 - Operations: market_info, account_dashboard, pool_stats, protocol_info
+- IMMEDIATE EXECUTION: For lending rates/statistics requests, call bonzo_tool with market_info operation directly
 - Always include platform name: ::BONZO:: **Bonzo Finance**
 
 **::SAUCERSWAP:: SaucerSwap (DEX Protocol):**
@@ -532,13 +543,18 @@ Current user account: ${userAccountId}`,],
       prompt,
     });
 
-    // User conversation memory
+    // 🧠 Create FRESH memory instance for this connection (MVP: avoid memory leaks between sessions)
+    console.log(`🧠 Creating FRESH memory for user: ${userAccountId}`);
     const memory = new BufferMemory({
       memoryKey: 'chat_history',
       inputKey: 'input',
       outputKey: 'output',
       returnMessages: true,
     });
+
+    // 🧹 Ensure memory is completely clean for new connections
+    await memory.clear();
+    console.log(`✅ Memory cleared for user: ${userAccountId}`);
 
     // Executor del agente para este usuario
     const agentExecutor = new AgentExecutor({
@@ -548,6 +564,7 @@ Current user account: ${userAccountId}`,],
       returnIntermediateSteps: true,
     });
 
+    console.log(`✅ User connection created successfully for: ${userAccountId}`);
     return {
       ws,
       userAccountId,
@@ -556,14 +573,39 @@ Current user account: ${userAccountId}`,],
     };
   }
 
+  private async cleanupUserConnection(ws: WebSocket): Promise<void> {
+    const userConnection = this.userConnections.get(ws);
+    
+    if (userConnection) {
+      console.log(`🧹 Cleaning up connection for user: ${userConnection.userAccountId}`);
+      
+      try {
+        // Clear memory explicitly to prevent leaks
+        await userConnection.memory.clear();
+        console.log(`✅ Memory cleared for user: ${userConnection.userAccountId}`);
+        
+        // Clear any pending steps
+        userConnection.pendingStep = undefined;
+        console.log(`✅ Pending steps cleared for user: ${userConnection.userAccountId}`);
+        
+      } catch (error: any) {
+        console.error('⚠️ Error during memory cleanup:', error);
+      }
+    }
+    
+    // Remove from connections map
+    this.userConnections.delete(ws);
+    console.log(`✅ User connection removed. Active connections: ${this.userConnections.size}`);
+  }
+
   private setupWebSocketServer(): void {
     this.wss.on('connection', (ws: WebSocket) => {
-      console.log('🔗 New WebSocket connection established');
+      console.log(`🔗 New WebSocket connection established (Total: ${this.userConnections.size + 1})`);
 
       // Send welcome message
       this.sendMessage(ws, {
         type: 'SYSTEM_MESSAGE',
-        message: 'Connected to Hedera Agent. Please authenticate with your account ID first using CONNECTION_AUTH message.',
+        message: `Connected to Hedera Agent. Please authenticate with your account ID first using CONNECTION_AUTH message.${this.FORCE_CLEAR_MEMORY_ON_MESSAGE ? ' [Debug: Memory cleared on each message]' : ''}`,
         level: 'info',
         timestamp: Date.now(),
       });
@@ -585,15 +627,15 @@ Current user account: ${userAccountId}`,],
       });
 
       // Handle disconnection
-      ws.on('close', () => {
+      ws.on('close', async () => {
         console.log('🔌 WebSocket connection closed');
-        this.userConnections.delete(ws);
+        await this.cleanupUserConnection(ws);
       });
 
       // Handle errors
-      ws.on('error', (error: any) => {
+      ws.on('error', async (error: any) => {
         console.error('❌ WebSocket error:', error);
-        this.userConnections.delete(ws);
+        await this.cleanupUserConnection(ws);
       });
     });
 
@@ -663,6 +705,9 @@ Current user account: ${userAccountId}`,],
       // If the message includes a different userAccountId, recreate the connection
       if (message.userAccountId && message.userAccountId !== userConnection.userAccountId) {
         console.log('🔄 Switching to different account:', message.userAccountId);
+        // First cleanup the old connection
+        await this.cleanupUserConnection(ws);
+        // Then create new connection
         const newUserConnection = await this.createUserConnection(ws, message.userAccountId);
         this.userConnections.set(ws, newUserConnection);
         
@@ -675,6 +720,21 @@ Current user account: ${userAccountId}`,],
       }
 
       const currentConnection = this.userConnections.get(ws)!;
+      
+      // 🧠 MVP: Debug memory state before processing
+      console.log(`🧠 Processing message for user: ${currentConnection.userAccountId}`);
+      try {
+        const memoryVariables = await currentConnection.memory.loadMemoryVariables({});
+        console.log(`📝 Current memory length: ${memoryVariables.chat_history?.length || 0} messages`);
+        
+        // 🧠 MVP: Force clear memory on each message if flag is set (for debugging memory issues)
+        if (this.FORCE_CLEAR_MEMORY_ON_MESSAGE) {
+          console.log('🧹 FORCE_CLEAR_MEMORY enabled - clearing memory before processing');
+          await currentConnection.memory.clear();
+        }
+      } catch (error) {
+        console.error('⚠️ Error reading memory state:', error);
+      }
       
       // Process message with user agent
       const response = await currentConnection.agentExecutor.invoke({ input: message.message });
@@ -883,11 +943,31 @@ Current user account: ${userAccountId}`,],
       try {
         const obsObj = typeof obs === 'string' ? JSON.parse(obs) : obs;
         
-        // Check if this is a SaucerSwap Infinity Pool flow with next step (CHECK FIRST!)
+        // Check if this is a Bonzo deposit flow with next step (CHECK FIRST - MORE SPECIFIC)
+        if (obsObj.nextStep && obsObj.step && obsObj.operation && 
+            (obsObj.operation.includes('bonzo') || 
+             obsObj.operation.includes('whbar') || 
+             obsObj.operation === 'associate_whbar' ||
+             obsObj.operation.includes('deposit') || 
+             obsObj.step === 'deposit')) {
+          console.log('🎯 DETECTED BONZO NEXT STEP:');
+          console.log(`   Step: ${obsObj.step}`);
+          console.log(`   Operation: ${obsObj.operation}`);
+          console.log(`   NextStep: ${obsObj.nextStep}`);
+          return {
+            tool: obsObj.toolInfo?.name || 'bonzo_deposit_tool',
+            operation: obsObj.operation,
+            step: obsObj.nextStep,
+            originalParams: obsObj.originalParams || {},
+            nextStepInstructions: obsObj.instructions || obsObj.message
+          };
+        }
+        
+        // Check if this is a SaucerSwap Infinity Pool flow with next step (SECOND - MORE SPECIFIC)
         if (obsObj.nextStep && (
           obsObj.toolType === 'infinity_pool' ||
           obsObj.protocol === 'saucerswap' ||
-          obsObj.step === 'token_association' || 
+          (obsObj.step === 'token_association' && obsObj.operation?.includes('sauce')) || 
           obsObj.step === 'token_approval' || 
           obsObj.step === 'stake' || 
           obsObj.operation?.includes('infinity_pool') || 
@@ -907,22 +987,6 @@ Current user account: ${userAccountId}`,],
           return {
             tool: obsObj.toolInfo?.name || 'saucerswap_infinity_pool_tool',
             operation: obsObj.operation || 'infinity_pool_operation',
-            step: obsObj.nextStep,
-            originalParams: obsObj.originalParams || {},
-            nextStepInstructions: obsObj.instructions || obsObj.message
-          };
-        }
-        
-        // Check if this is a Bonzo deposit flow with next step (MORE SPECIFIC NOW)
-        if (obsObj.nextStep && obsObj.step && obsObj.operation && 
-            (obsObj.operation.includes('bonzo') || obsObj.operation.includes('deposit') || obsObj.step === 'deposit')) {
-          console.log('🎯 DETECTED BONZO NEXT STEP:');
-          console.log(`   Step: ${obsObj.step}`);
-          console.log(`   Operation: ${obsObj.operation}`);
-          console.log(`   NextStep: ${obsObj.nextStep}`);
-          return {
-            tool: obsObj.toolInfo?.name || 'bonzo_deposit_tool',
-            operation: obsObj.operation,
             step: obsObj.nextStep,
             originalParams: obsObj.originalParams || {},
             nextStepInstructions: obsObj.instructions || obsObj.message
@@ -1037,6 +1101,13 @@ Current user account: ${userAccountId}`,],
 ::HEDERA:: Hedera WebSocket Agent running on:
 🌐 HTTP Health Check: http://localhost:${port}/health
 🔌 WebSocket Server: ws://localhost:${port}
+
+🧠 MVP Memory Configuration:
+   - Fresh memory per connection: ✅ ENABLED
+   - Auto cleanup on disconnect: ✅ ENABLED
+   - Force clear on each message: ${this.FORCE_CLEAR_MEMORY_ON_MESSAGE ? '✅ ENABLED' : '❌ DISABLED'}
+   
+📝 To enable debug mode: Set environment variable FORCE_CLEAR_MEMORY=true
 
 📝 Supported message types:
    - CONNECTION_AUTH: Authenticate with account ID
