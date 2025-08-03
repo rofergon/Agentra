@@ -136,12 +136,71 @@ const fetchWithRetry = async (url: string, apiKey: string, maxRetries = SAUCERSW
   throw new Error('Max retries exceeded');
 };
 
+// Fetch xSAUCE balance from Hedera Mirror Node
+const fetchXSauceBalance = async (accountId: string, network: string): Promise<any> => {
+  const isMainnet = network === 'mainnet';
+  const mirrorNodeUrl = isMainnet ? HEDERA_MIRROR_NODE_CONFIG.BASE_URL.MAINNET : HEDERA_MIRROR_NODE_CONFIG.BASE_URL.TESTNET;
+  const xSauceTokenId = isMainnet ? XSAUCE_TOKEN_CONFIG.MAINNET.TOKEN_ID : XSAUCE_TOKEN_CONFIG.TESTNET.TOKEN_ID;
+  
+  const url = `${mirrorNodeUrl}${HEDERA_MIRROR_NODE_CONFIG.ENDPOINTS.ACCOUNT_TOKENS}/${accountId}/tokens?token.id=${xSauceTokenId}`;
+  
+  console.log(`🔍 Querying Mirror Node for xSAUCE balance: ${url}`);
+  
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'Hedera-Agent-Kit/1.0'
+      },
+      signal: AbortSignal.timeout(10000) // 10 second timeout
+    });
+
+    if (!response.ok) {
+      throw new Error(`Mirror Node HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    console.log(`✅ Mirror Node response received for xSAUCE balance`);
+    
+    return data;
+    
+  } catch (error) {
+    console.error('❌ Mirror Node query failed:', error);
+    throw error;
+  }
+};
+
 // Available API operations
 export const SAUCERSWAP_API_OPERATIONS = {
   GENERAL_STATS: 'general_stats',
   SSS_STATS: 'sss_stats',
   FARMS: 'farms',
   ACCOUNT_FARMS: 'account_farms',
+  INFINITY_POOL_POSITION: 'infinity_pool_position',
+} as const;
+
+// Hedera Mirror Node configuration
+export const HEDERA_MIRROR_NODE_CONFIG = {
+  BASE_URL: {
+    MAINNET: 'https://mainnet-public.mirrornode.hedera.com',
+    TESTNET: 'https://testnet.mirrornode.hedera.com'
+  },
+  ENDPOINTS: {
+    ACCOUNT_TOKENS: '/api/v1/accounts'
+  }
+} as const;
+
+// xSAUCE Token configuration
+export const XSAUCE_TOKEN_CONFIG = {
+  MAINNET: {
+    TOKEN_ID: '0.0.1460200',
+    MOTHERSHIP_CONTRACT: '0.0.1460199'
+  },
+  TESTNET: {
+    TOKEN_ID: '0.0.1418651', // From .env file
+    MOTHERSHIP_CONTRACT: '0.0.1418650' // Assuming similar pattern
+  }
 } as const;
 
 export const saucerswapApiQueryParameters = (context: Context = {}) => {
@@ -151,14 +210,17 @@ export const saucerswapApiQueryParameters = (context: Context = {}) => {
       SAUCERSWAP_API_OPERATIONS.SSS_STATS,
       SAUCERSWAP_API_OPERATIONS.FARMS,
       SAUCERSWAP_API_OPERATIONS.ACCOUNT_FARMS,
+      SAUCERSWAP_API_OPERATIONS.INFINITY_POOL_POSITION,
     ]).describe(
-      'The SaucerSwap API operation to perform: general_stats, sss_stats, farms, or account_farms'
+      'The SaucerSwap API operation to perform: general_stats, sss_stats, farms, account_farms, or infinity_pool_position'
     ),
     accountId: z.string().optional().describe(
-      'Hedera account ID in format shard.realm.num (required only for account_farms operation)'
+      'Hedera account ID in format shard.realm.num (required for account_farms and infinity_pool_position operations)'
     ),
-    network: z.enum(['mainnet', 'testnet']).default('mainnet').describe(
-      'The Hedera network to query (mainnet or testnet)'
+    network: z.enum(['mainnet', 'testnet']).default(
+      (process.env.HEDERA_NETWORK as 'mainnet' | 'testnet') || 'mainnet'
+    ).describe(
+      'The Hedera network to query (defaults to HEDERA_NETWORK from .env)'
     ),
   }) as any;
 };
@@ -194,9 +256,15 @@ Available operations:
    - Requires accountId parameter
    - Returns farm details and staked amounts for specific account
 
+5. **Infinity Pool Position** (infinity_pool_position):
+   - Get user's actual Infinity Pool staking position
+   - Combines xSAUCE balance from Mirror Node + SAUCE/xSAUCE ratio from API
+   - Requires accountId parameter
+   - Returns xSAUCE balance, claimable SAUCE, current ratio, and position value
+
 Parameters:
 - operation (required): The API operation to perform
-- accountId (optional): Required only for account_farms operation
+- accountId (optional): Required for account_farms and infinity_pool_position operations
 - network (optional): mainnet or testnet (defaults to mainnet)
 
 ${usageInstructions}
@@ -206,6 +274,7 @@ Examples:
 - Get SSS stats: operation="sss_stats", network="mainnet"
 - Get active farms: operation="farms"
 - Get account farms: operation="account_farms", accountId="0.0.123456"
+- Get infinity pool position: operation="infinity_pool_position", accountId="0.0.123456"
 `;
 };
 
@@ -233,10 +302,12 @@ export const getSaucerSwapApiQuery = async (
       };
     }
 
-    // Validate account ID for account farms operation
-    if (params.operation === SAUCERSWAP_API_OPERATIONS.ACCOUNT_FARMS && !params.accountId) {
+    // Validate account ID for operations that require it
+    if ((params.operation === SAUCERSWAP_API_OPERATIONS.ACCOUNT_FARMS || 
+         params.operation === SAUCERSWAP_API_OPERATIONS.INFINITY_POOL_POSITION) && 
+        !params.accountId) {
       return {
-        error: 'accountId is required for account_farms operation',
+        error: `accountId is required for ${params.operation} operation`,
         suggestion: 'Provide a Hedera account ID in format shard.realm.num (e.g., "0.0.123456")'
       };
     }
@@ -246,6 +317,119 @@ export const getSaucerSwapApiQuery = async (
     const isMainnet = network === 'mainnet';
     const baseUrl = isMainnet ? SAUCERSWAP_API_CONFIG.BASE_URL.MAINNET : SAUCERSWAP_API_CONFIG.BASE_URL.TESTNET;
     const apiKey = isMainnet ? SAUCERSWAP_API_CONFIG.API_KEYS.MAINNET : SAUCERSWAP_API_CONFIG.API_KEYS.TESTNET;
+
+    console.log(`🌐 SaucerSwap API Network Config:`);
+    console.log(`   ENV HEDERA_NETWORK: ${process.env.HEDERA_NETWORK}`);
+    console.log(`   Params Network: ${params.network}`);
+    console.log(`   Final Network: ${network}`);
+    console.log(`   Is Mainnet: ${isMainnet}`);
+    console.log(`   Base URL: ${baseUrl}`);
+    console.log(`   API Key (last 4): ...${apiKey.slice(-4)}`);
+
+    // Handle special case: Infinity Pool Position (combines Mirror Node + SaucerSwap API)
+    if (params.operation === SAUCERSWAP_API_OPERATIONS.INFINITY_POOL_POSITION) {
+      console.log('🥩 Processing Infinity Pool position query...');
+      
+      try {
+        // 1. Get xSAUCE balance from Mirror Node
+        const xSauceBalanceData = await fetchXSauceBalance(params.accountId!, network);
+        
+        // 2. Get SAUCE/xSAUCE ratio from SaucerSwap API
+        const sssStatsUrl = baseUrl + SAUCERSWAP_API_CONFIG.ENDPOINTS.SSS_STATS;
+        const sssResponse = await fetchWithRetry(sssStatsUrl, apiKey);
+        const sssData = await sssResponse.json();
+        
+        // 3. Extract xSAUCE balance (with decimals handling)
+        let xSauceBalance = 0;
+        let xSauceDecimals = 8; // Default xSAUCE decimals
+        
+        if (xSauceBalanceData.tokens && xSauceBalanceData.tokens.length > 0) {
+          const xSauceToken = xSauceBalanceData.tokens[0];
+          xSauceBalance = parseInt(xSauceToken.balance) || 0;
+          xSauceDecimals = xSauceToken.decimals || 8;
+        }
+        
+        // 4. Calculate claimable SAUCE
+        const xSauceFormatted = xSauceBalance / Math.pow(10, xSauceDecimals);
+        const ratio = parseFloat(sssData.ratio) || 0;
+        const claimableSauce = xSauceFormatted * ratio;
+        
+        // 5. Get current SAUCE price for USD calculations (from SSS stats)
+        const totalSauceStaked = parseInt(sssData.sauce) || 0;
+        const totalXSauceSupply = parseInt(sssData.xsauce) || 0;
+        const avg5dayAPY = parseFloat(sssData.avg5day) || 0;
+        
+        console.log(`✅ Infinity Pool position calculated:`);
+        console.log(`   xSAUCE Balance: ${xSauceFormatted.toFixed(6)}`);
+        console.log(`   SAUCE/xSAUCE Ratio: ${ratio}`);
+        console.log(`   Claimable SAUCE: ${claimableSauce.toFixed(6)}`);
+        
+        const result = {
+          operation: params.operation,
+          network: network,
+          timestamp: new Date().toISOString(),
+          data: {
+            account_id: params.accountId,
+            xsauce_balance: {
+              raw: xSauceBalance.toString(),
+              formatted: xSauceFormatted,
+              decimals: xSauceDecimals
+            },
+            sauce_claimable: {
+              amount: claimableSauce,
+              formatted: `${claimableSauce.toFixed(6)} SAUCE`
+            },
+            ratio: {
+              sauce_per_xsauce: ratio,
+              description: `1 xSAUCE = ${ratio.toFixed(6)} SAUCE`
+            },
+            market_context: {
+              total_sauce_staked: totalSauceStaked,
+              total_xsauce_supply: totalXSauceSupply,
+              avg_5day_apy: avg5dayAPY,
+              apy_percentage: `${(avg5dayAPY * 100).toFixed(2)}%`
+            },
+            has_position: xSauceBalance > 0,
+            position_value_sauce: claimableSauce
+          },
+          source: 'Mirror Node + SaucerSwap Finance API',
+          mirror_node_url: `${isMainnet ? HEDERA_MIRROR_NODE_CONFIG.BASE_URL.MAINNET : HEDERA_MIRROR_NODE_CONFIG.BASE_URL.TESTNET}${HEDERA_MIRROR_NODE_CONFIG.ENDPOINTS.ACCOUNT_TOKENS}/${params.accountId}/tokens`,
+          saucerswap_api_url: sssStatsUrl,
+          cached: false
+        };
+
+        // Cache the result
+        apiCache.set(cacheKey, { data: result, timestamp: Date.now() });
+        
+        return result;
+        
+      } catch (error) {
+        console.error('❌ Infinity Pool position query failed:', error);
+        
+        return {
+          error: `Error querying Infinity Pool position: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          operation: params.operation,
+          network: network,
+          timestamp: new Date().toISOString(),
+          suggestion: 'Check account ID and network configuration. Ensure both Mirror Node and SaucerSwap API are accessible.',
+          troubleshooting: {
+            common_causes: [
+              'Invalid account ID format',
+              'Account has no xSAUCE tokens',
+              'Mirror Node connectivity issues', 
+              'SaucerSwap API rate limiting',
+              'Network mismatch (mainnet/testnet)'
+            ],
+            next_steps: [
+              'Verify account ID format (shard.realm.num)',
+              'Check if account has xSAUCE tokens',
+              'Try again in a few moments',
+              'Verify network setting matches account network'
+            ]
+          }
+        };
+      }
+    }
 
     // Build API URL
     let apiUrl = baseUrl;

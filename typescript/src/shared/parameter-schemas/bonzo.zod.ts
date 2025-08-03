@@ -12,6 +12,12 @@ const createBonzoConfig = () => {
       network,
       network === 'mainnet' ? '0x236897c518996163E7b313aD21D1C9fCC7BA1afc' : undefined
     ),
+    LENDING_POOL_CONTRACT_ID: getNetworkSpecificEnvVar(
+      'BONZO', 
+      'LENDING_POOL_CONTRACT_ID', 
+      network,
+      network === 'mainnet' ? '0.0.7308459' : undefined
+    ),
     WHBAR_TOKEN_ID: getNetworkSpecificEnvVar(
       'BONZO', 
       'WHBAR_TOKEN_ID', 
@@ -34,7 +40,7 @@ export const bonzoDepositParameters = (context: Context = {}) =>
     hbarAmount: z.number().positive().describe('Amount of HBAR to deposit (in HBAR units, not tinybars)'),
     userAccountId: z.string().optional().describe('The account making the deposit (defaults to context account)'),
     associateWhbar: z.boolean().optional().default(true).describe('Whether to associate WHBAR token if not already associated'),
-    referralCode: z.number().int().min(0).max(65535).optional().default(0).describe('Referral code for the deposit (0-65535)'),
+    referralCode: z.number().int().min(0).max(65535).optional().default(0).describe('Referral code for the deposit (uint16, 0-65535, default: 0)'),
     transactionMemo: z.string().optional().describe('Optional memo for the transactions'),
   });
 
@@ -59,6 +65,12 @@ export const getBonzoConfigForNetwork = (network: 'testnet' | 'mainnet') => {
       network,
       network === 'mainnet' ? '0x236897c518996163E7b313aD21D1C9fCC7BA1afc' : undefined
     ),
+    LENDING_POOL_CONTRACT_ID: getNetworkSpecificEnvVar(
+      'BONZO', 
+      'LENDING_POOL_CONTRACT_ID', 
+      network,
+      network === 'mainnet' ? '0.0.7308459' : undefined
+    ),
     WHBAR_TOKEN_ID: getNetworkSpecificEnvVar(
       'BONZO', 
       'WHBAR_TOKEN_ID', 
@@ -79,4 +91,5 @@ export const getBonzoConfigForNetwork = (network: 'testnet' | 'mainnet') => {
 // Log current configuration on import (for debugging)
 console.log(`🌐 Bonzo Finance configured for: ${BONZO_CONFIG.NETWORK.toUpperCase()}`);
 console.log(`📍 LendingPool: ${BONZO_CONFIG.LENDING_POOL_ADDRESS}`);
+console.log(`🏢 LendingPool Contract ID: ${BONZO_CONFIG.LENDING_POOL_CONTRACT_ID}`);
 console.log(`🪙 WHBAR Token: ${BONZO_CONFIG.WHBAR_TOKEN_ID}`); 

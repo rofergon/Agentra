@@ -1,6 +1,13 @@
 node_modules
 .env
+.env.local
+.env.production
+.railway-env
 .idea
+*.log
+.DS_Store
+*.tsbuildinfo
+coverage/
 /langchain/
 /modelcontextprotocol/
 /dist/

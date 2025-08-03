@@ -34,22 +34,27 @@ User Account: ${userAccountId}`,
         SAUCERSWAP_API_OPERATIONS.SSS_STATS,
         SAUCERSWAP_API_OPERATIONS.FARMS,
         SAUCERSWAP_API_OPERATIONS.ACCOUNT_FARMS,
+        SAUCERSWAP_API_OPERATIONS.INFINITY_POOL_POSITION,
       ]).describe(
-        'The SaucerSwap API operation: general_stats, sss_stats, farms, or account_farms'
+        'The SaucerSwap API operation: general_stats, sss_stats, farms, account_farms, or infinity_pool_position'
       ),
       accountId: z.string().optional().describe(
-        'Hedera account ID in format shard.realm.num (required only for account_farms)'
+        'Hedera account ID in format shard.realm.num (required for account_farms and infinity_pool_position)'
       ),
-      network: z.enum(['mainnet', 'testnet']).default('mainnet').describe(
-        'The Hedera network to query (mainnet or testnet)'
+      network: z.enum(['mainnet', 'testnet']).default(
+        (process.env.HEDERA_NETWORK as 'mainnet' | 'testnet') || 'mainnet'
+      ).describe(
+        'The Hedera network to query (defaults to HEDERA_NETWORK from .env)'
       ),
     }),
     func: async (params: any) => {
       try {
-        // Auto-use user account ID for account farms queries if not provided
-        if (params.operation === SAUCERSWAP_API_OPERATIONS.ACCOUNT_FARMS && !params.accountId) {
+        // Auto-use user account ID for operations that require accountId if not provided
+        if ((params.operation === SAUCERSWAP_API_OPERATIONS.ACCOUNT_FARMS || 
+             params.operation === SAUCERSWAP_API_OPERATIONS.INFINITY_POOL_POSITION) && 
+            !params.accountId) {
           params.accountId = userAccountId;
-          console.log(`📋 Using user account ID for account farms: ${userAccountId}`);
+          console.log(`📋 Using user account ID for ${params.operation}: ${userAccountId}`);
         }
 
         const result = await getSaucerSwapApiQuery(client, context, params);

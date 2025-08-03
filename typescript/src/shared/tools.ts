@@ -29,7 +29,13 @@ import createTopicTool, { CREATE_TOPIC_TOOL } from './tools/consensus/create-top
 import { bonzoApiQueryTool, BONZO_API_QUERY_TOOL } from './tools/defi/bonzo';
 import { bonzoDepositTool, BONZO_DEPOSIT_TOOL } from './tools/defi/bonzoTransaction';
 // Import SaucerSwap tools from new modular structure (API-based)
-import { saucerswapApiQueryTool, SAUCERSWAP_API_QUERY_TOOL } from './tools/defi/saucerswap';
+import { saucerswapApiQueryTool, SAUCERSWAP_API_QUERY_TOOL } from './tools/defi/saucerswap-api';
+// Import SaucerSwap Router tools (contract-based swap quotes)
+// TODO: Fix SaucerSwap-Quote tool export issue
+// import saucerswapRouterSwapQuoteTool, { SAUCERSWAP_ROUTER_SWAP_QUOTE_TOOL } from './tools/defi/SaucerSwap-Quote';
+// Import SaucerSwap Infinity Pool staking tools
+import { infinityPoolTool, SAUCERSWAP_INFINITY_POOL_TOOL } from './tools/defi/SaucerSwap-InfinityPool';
+import { infinityPoolStepTool, SAUCERSWAP_INFINITY_POOL_STEP_TOOL } from './tools/defi/SaucerSwap-InfinityPool';
 
 export type Tool = {
   method: string;
@@ -53,6 +59,10 @@ const tools = (context: Context): Tool[] => [
   bonzoApiQueryTool(context),
   bonzoDepositTool(context),
   saucerswapApiQueryTool(context),
+  // TODO: Add back when SaucerSwap-Quote export is fixed
+  // saucerswapRouterSwapQuoteTool(context),
+  infinityPoolTool(context),
+  infinityPoolStepTool(context),
 ];
 
 export const hederaTools = {
@@ -69,6 +79,10 @@ export const hederaTools = {
   BONZO_API_QUERY_TOOL,
   BONZO_DEPOSIT_TOOL,
   SAUCERSWAP_API_QUERY_TOOL,
+  // TODO: Add back when SaucerSwap-Quote export is fixed
+  // SAUCERSWAP_ROUTER_SWAP_QUOTE_TOOL,
+  SAUCERSWAP_INFINITY_POOL_TOOL,
+  SAUCERSWAP_INFINITY_POOL_STEP_TOOL,
 };
 
 export default tools;
