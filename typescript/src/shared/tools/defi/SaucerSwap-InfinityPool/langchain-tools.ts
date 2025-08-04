@@ -7,6 +7,7 @@ import {
   SAUCERSWAP_INFINITY_POOL_TOOL,
   INFINITY_POOL_OPERATIONS,
   INFINITY_POOL_CONFIG,
+  getInfinityPoolConfig,
 } from './api-client';
 import {
   executeInfinityPoolStakingStep,
@@ -53,9 +54,9 @@ export const createSaucerswapInfinityPoolLangchainTool = (
 - Verify amounts before confirming
 
 **CONTRACT INFO:**
-- MotherShip: ${INFINITY_POOL_CONFIG.MOTHERSHIP_CONTRACT_ID}
-- SAUCE Token: ${INFINITY_POOL_CONFIG.SAUCE_TOKEN_ID} (6 decimals)
-- xSAUCE Token: ${INFINITY_POOL_CONFIG.XSAUCE_TOKEN_ID} (6 decimals)
+- MotherShip: ${getInfinityPoolConfig().MOTHERSHIP_CONTRACT_ID}
+- SAUCE Token: ${getInfinityPoolConfig().SAUCE_TOKEN_ID} (6 decimals)
+- xSAUCE Token: ${getInfinityPoolConfig().XSAUCE_TOKEN_ID} (6 decimals)
 
 User Account: ${userAccountId}`,
     

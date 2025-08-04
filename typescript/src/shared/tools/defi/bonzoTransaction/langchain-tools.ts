@@ -12,7 +12,7 @@ import {
 import { bonzoDepositParameters, BONZO_CONFIG } from '../../../parameter-schemas/bonzo.zod';
 
 /**
- * Create a LangChain tool for Bonzo Finance HBAR deposits
+ * Create a LangChain tool for Bonzo Finance multi-token deposits
  */
 export const createBonzoDepositLangchainTool = (
   client: Client,
@@ -21,40 +21,40 @@ export const createBonzoDepositLangchainTool = (
 ) => {
   return new DynamicStructuredTool({
     name: BONZO_DEPOSIT_TOOL,
-    description: `Deposit HBAR into Bonzo Finance DeFi protocol on Hedera Mainnet to earn interest.
+    description: `Deposit multiple tokens (HBAR, SAUCE, xSAUCE, USDC) into Bonzo Finance DeFi protocol on Hedera ${BONZO_CONFIG.NETWORK.toUpperCase()} to earn interest.
 
-**🔥 LIVE MAINNET TOOL - REAL FUNDS INVOLVED 🔥**
+**🔥 LIVE ${BONZO_CONFIG.NETWORK.toUpperCase()} TOOL - REAL FUNDS INVOLVED 🔥**
 
-This tool performs HBAR deposits into Bonzo Finance, a lending protocol on Hedera similar to Aave. 
+This tool performs multi-token deposits into Bonzo Finance, a lending protocol on Hedera similar to Aave. 
+
+**Supported Tokens:**
+- **HBAR** (Native Hedera token) → receives aWHBAR
+- **SAUCE** (SaucerSwap governance token) → receives aSAUCE  
+- **xSAUCE** (Staked SAUCE token) → receives axSAUCE
+- **USDC** (USD Coin stablecoin) → receives aUSDC
 
 **Key Features:**
-- Automatic WHBAR token association (if needed)
-- HBAR deposit to LendingPool contract
-- Receive aWHBAR (interest-bearing tokens)
+- Automatic token association (if needed)
+- Multi-token deposit to LendingPool contract
+- Receive interest-bearing aTokens
 - Full transaction flow management
 
 **How it works:**
-1. Associates WHBAR token to your account if not already associated
-2. Calls LendingPool.deposit() to convert HBAR → WHBAR → aWHBAR
-3. You receive aWHBAR tokens that grow in value over time
-4. Can withdraw HBAR + interest later through Bonzo interface
+1. Associates the selected token to your account if not already associated
+2. Calls LendingPool.deposit() to deposit your tokens
+3. You receive aTokens that grow in value over time
+4. Can withdraw tokens + interest later through Bonzo interface
 
-**Contract Details (Hedera Mainnet):**
+**Contract Details (Hedera ${BONZO_CONFIG.NETWORK.toUpperCase()}):**
 - LendingPool: ${BONZO_CONFIG.LENDING_POOL_ADDRESS}
-- WHBAR Token: ${BONZO_CONFIG.WHBAR_TOKEN_ID}
-- Network: Hedera Mainnet
+- LendingPool Contract ID: ${BONZO_CONFIG.LENDING_POOL_CONTRACT_ID}
+- Network: Hedera ${BONZO_CONFIG.NETWORK.toUpperCase()}
 
 **User Account:** ${userAccountId}
 
 **Returns transaction bytes for frontend signing when in RETURN_BYTES mode.**`,
 
-    schema: z.object({
-      hbarAmount: z.number().positive().describe('Amount of HBAR to deposit (e.g., 1.5 for 1.5 HBAR)'),
-      userAccountId: z.string().optional().describe('Account making the deposit (optional, defaults to user account)'),
-      associateWhbar: z.boolean().optional().default(true).describe('Whether to associate WHBAR token automatically'),
-      referralCode: z.number().int().min(0).max(65535).optional().default(0).describe('Referral code (0-65535)'),
-      transactionMemo: z.string().optional().describe('Optional transaction memo'),
-    }),
+    schema: bonzoDepositParameters(context),
 
     func: async (params: any) => {
       try {
@@ -64,8 +64,8 @@ This tool performs HBAR deposits into Bonzo Finance, a lending protocol on Heder
         }
 
         console.log(`🚀 Bonzo Finance deposit initiated for ${params.userAccountId}`);
-        console.log(`💰 Amount: ${params.hbarAmount} HBAR`);
-        console.log(`🔗 WHBAR Association: ${params.associateWhbar ? 'Yes' : 'No'}`);
+        console.log(`💰 Amount: ${params.amount} ${(params.token || 'hbar').toUpperCase()}`);
+        console.log(`🔗 Token Association: ${params.associateToken ? 'Yes' : 'No'}`);
 
         const result = await bonzoDepositFlow(client, context, params);
 
@@ -74,24 +74,24 @@ This tool performs HBAR deposits into Bonzo Finance, a lending protocol on Heder
           toolInfo: {
             name: BONZO_DEPOSIT_TOOL,
             version: '1.0.0',
-            network: 'Hedera Mainnet',
+            network: `Hedera ${BONZO_CONFIG.NETWORK.toUpperCase()}`,
             protocol: 'Bonzo Finance',
             timestamp: new Date().toISOString(),
           },
           userGuidance: {
             nextSteps: result.success ? [
               '✅ Deposit completed successfully!',
-              '🏦 Check your account for aWHBAR tokens',
+              `🏦 Check your account for a${(params.token || 'hbar').toUpperCase()} tokens`,
               '📊 Monitor your position on Bonzo Finance dashboard',
-              '💡 Your aWHBAR will grow in value as interest accrues',
+              `💡 Your a${(params.token || 'hbar').toUpperCase()} will grow in value as interest accrues`,
             ] : [
               '❌ Deposit failed - check error details',
               '🔧 Review troubleshooting suggestions',
               '💬 Contact support if issue persists',
             ],
             importantNotes: [
-              'Your HBAR has been deposited into Bonzo Finance lending protocol',
-              'You received aWHBAR tokens representing your deposit + interest',
+              `Your ${(params.token || 'hbar').toUpperCase()} has been deposited into Bonzo Finance lending protocol`,
+              `You received a${(params.token || 'hbar').toUpperCase()} tokens representing your deposit + interest`,
               'Interest starts accruing immediately',
               'Use Bonzo Finance interface to withdraw or monitor positions',
             ],
@@ -109,11 +109,11 @@ This tool performs HBAR deposits into Bonzo Finance, a lending protocol on Heder
             possibleCauses: [
               'Invalid parameters provided',
               'Network connectivity issues',
-              'Insufficient HBAR balance',
+              `Insufficient ${(params.token || 'hbar').toUpperCase()} balance`,
               'Account not properly configured',
             ],
             nextSteps: [
-              'Verify HBAR balance is sufficient',
+              `Verify ${(params.token || 'hbar').toUpperCase()} balance is sufficient`,
               'Check network connection',
               'Ensure account has proper permissions',
               'Try again with valid parameters',
@@ -151,13 +151,14 @@ export const createBonzoDepositStepLangchainTool = (
 ) => {
   return new DynamicStructuredTool({
     name: 'bonzo_deposit_step_tool',
-    description: `Complete the HBAR deposit to Bonzo Finance (Step 2 after WHBAR token association).
-    Use this tool ONLY after the WHBAR token association has been completed and confirmed.
+    description: `Complete the token deposit to Bonzo Finance (Step 2 after token association).
+    Use this tool ONLY after the token association has been completed and confirmed.
     
     This will prepare the deposit transaction for signature in the frontend.
     
     Required parameters:
-    - hbarAmount: Amount of HBAR to deposit (e.g., 1.5)
+    - token: Token to deposit ('hbar', 'sauce', 'xsauce', 'usdc')
+    - amount: Amount of tokens to deposit (e.g., 1.5)
     - userAccountId: Your Hedera account ID (optional, defaults to authenticated account)
     - referralCode: Optional referral code (0-65535, default: 0)`,
     
@@ -171,10 +172,10 @@ export const createBonzoDepositStepLangchainTool = (
         }
 
         console.log(`🚀 Bonzo Finance deposit step initiated for ${params.userAccountId}`);
-        console.log(`💰 Amount: ${params.hbarAmount} HBAR`);
+        console.log(`💰 Amount: ${params.amount} ${(params.token || 'hbar').toUpperCase()}`);
 
         // Skip token association for this step
-        const paramsWithoutAssociation = { ...params, associateWhbar: false };
+        const paramsWithoutAssociation = { ...params, associateToken: false };
         const result = await executeBonzoDepositOnly(client, context, paramsWithoutAssociation);
 
         return JSON.stringify({
@@ -182,14 +183,14 @@ export const createBonzoDepositStepLangchainTool = (
           toolInfo: {
             name: 'bonzo_deposit_step_tool',
             version: '1.0.0',
-            network: 'Hedera Mainnet',
+            network: `Hedera ${BONZO_CONFIG.NETWORK.toUpperCase()}`,
             protocol: 'Bonzo Finance',
             step: 'deposit_only',
             timestamp: new Date().toISOString(),
           },
           userGuidance: {
-            nextAction: 'Sign the transaction in your wallet to complete the HBAR deposit',
-            postTransaction: 'After confirmation, you will receive aWHBAR tokens representing your deposit + interest',
+            nextAction: `Sign the transaction in your wallet to complete the ${(params.token || 'hbar').toUpperCase()} deposit`,
+            postTransaction: `After confirmation, you will receive a${(params.token || 'hbar').toUpperCase()} tokens representing your deposit + interest`,
           },
         });
       } catch (error: any) {

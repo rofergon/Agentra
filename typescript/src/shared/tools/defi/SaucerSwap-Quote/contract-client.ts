@@ -25,7 +25,7 @@ export const SAUCERSWAP_V2_CONTRACTS = {
   testnet: {
     QUOTER_V2_ID: "0.0.1390002",
     ROUTER_ID: "0.0.1414040", 
-    WHBAR_TOKEN_ID: "0.0.15057",   // ✅ WHBAR TOKEN for testnet
+    WHBAR_TOKEN_ID: "0.0.15058",   // ✅ WHBAR TOKEN for testnet (from official docs)
     RPC_URL: "https://testnet.hashio.io/api",
   },
 } as const;

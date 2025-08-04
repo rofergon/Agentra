@@ -48,12 +48,12 @@ export const createSaucerSwapRouterSwapLangchainTool = (
 1. **HBAR to SAUCE**: 
    - operation: "swap_exact_hbar_for_tokens"
    - amountIn: "100000000" (1 HBAR with 8 decimals)
-   - tokenPath: ["HBAR", "0.0.731861"]
+   - tokenPath: ["HBAR", "0.0.731861"] (mainnet) or ["HBAR", "0.0.1183558"] (testnet)
    
 2. **SAUCE to HBAR**:
    - operation: "swap_exact_tokens_for_hbar"  
    - amountIn: "1000000000000000000" (1 SAUCE with 18 decimals)
-   - tokenPath: ["0.0.731861", "HBAR"]
+   - tokenPath: ["0.0.731861", "HBAR"] (mainnet) or ["0.0.1183558", "HBAR"] (testnet)
 
 3. **Token to Token**:
    - operation: "swap_exact_tokens_for_tokens"
@@ -72,7 +72,7 @@ export const createSaucerSwapRouterSwapLangchainTool = (
 
 **🪙 TOKEN SPECIFICATIONS:**
 - HBAR: Use "HBAR" (automatically converts to WHBAR for swaps)
-- SAUCE Token: "0.0.731861" (mainnet) / "0.0.456858" (testnet)
+- SAUCE Token: "0.0.731861" (mainnet) / "0.0.1183558" (testnet)
 - Other tokens: Use Hedera token ID format "0.0.xxxxx"
 - Path supports multi-hop swaps: ["tokenA", "tokenB", "tokenC"]
 
@@ -123,7 +123,7 @@ Network contracts: Mainnet Router ${SAUCERSWAP_V2_ROUTER_CONTRACTS.mainnet.ROUTE
       ),
       
       tokenPath: z.array(z.string()).min(2).describe(
-        'Swap path as array of token IDs. Use "HBAR" for HBAR. Example: ["HBAR", "0.0.731861"] for HBAR→SAUCE'
+        'Swap path as array of token IDs. Use "HBAR" for HBAR. Example: ["HBAR", "0.0.731861"] for HBAR→SAUCE on mainnet, ["HBAR", "0.0.1183558"] on testnet'
       ),
       
       slippagePercent: z.number().min(0.01).max(50).default(2.0).describe(
@@ -151,6 +151,15 @@ Network contracts: Mainnet Router ${SAUCERSWAP_V2_ROUTER_CONTRACTS.mainnet.ROUTE
         if (!params.recipientAccountId) {
           params.recipientAccountId = userAccountId;
           console.log(`👤 Using user account as recipient: ${userAccountId}`);
+        }
+        
+        // Ensure network follows HEDERA_NETWORK from .env if not explicitly provided
+        if (!params.network || params.network === 'mainnet') {
+          const envNetwork = (process.env.HEDERA_NETWORK as 'mainnet' | 'testnet') || 'mainnet';
+          if (envNetwork === 'testnet') {
+            params.network = 'testnet';
+            console.log(`🌐 Overriding network to testnet based on HEDERA_NETWORK=${process.env.HEDERA_NETWORK}`);
+          }
         }
 
         // Execute swap preparation

@@ -346,7 +346,10 @@ When user requests ANY swap operation, ALWAYS follow this exact sequence:
 - Operations: swap_exact_hbar_for_tokens, swap_exact_tokens_for_hbar, swap_exact_tokens_for_tokens
 - Real transaction creation using UniswapV2Router02 contract
 - Built-in slippage protection and deadline management
-- Supports SAUCE token (0.0.731861 mainnet / 0.0.456858 testnet)
+- IMPORTANT: Use correct token IDs for current network:
+  - Current network: ${process.env.HEDERA_NETWORK || 'mainnet'}
+  - SAUCE testnet: 0.0.1183558 | SAUCE mainnet: 0.0.731861  
+  - WHBAR testnet: 0.0.15058 | WHBAR mainnet: 0.0.1456986
 - Icons: 🔄 💱 💰 🚀 ⚡
 
 **::SAUCERSWAP:: SaucerSwap Infinity Pool (SAUCE Staking):**
@@ -759,7 +762,16 @@ Current user account: ${userAccountId}`,],
         // Store pending step information for multi-step flows
         if (nextStep) {
           console.log(`📝 Storing pending step: ${nextStep.step} for ${nextStep.tool}`);
+          console.log(`📝 Storing pending step details:`, {
+            tool: nextStep.tool,
+            operation: nextStep.operation,
+            step: nextStep.step,
+            originalParams: nextStep.originalParams,
+            nextStepInstructions: nextStep.nextStepInstructions
+          });
           currentConnection.pendingStep = nextStep;
+        } else {
+          console.log('📝 No next step detected from agent response');
         }
         
         // Send agent response
@@ -814,7 +826,15 @@ Current user account: ${userAccountId}`,],
       // Check if there's a pending next step to execute
       if (userConnection?.pendingStep) {
         console.log('🔄 Executing next step automatically:', userConnection.pendingStep.step);
+        console.log('🔄 Pending step details before execution:', {
+          tool: userConnection.pendingStep.tool,
+          operation: userConnection.pendingStep.operation,
+          step: userConnection.pendingStep.step,
+          originalParams: userConnection.pendingStep.originalParams
+        });
         await this.executeNextStep(ws, userConnection);
+      } else {
+        console.log('🔄 No pending step to execute after transaction confirmation');
       }
     } else {
       console.log('❌ Transaction failed:', message.error);
@@ -891,7 +911,7 @@ Current user account: ${userAccountId}`,],
             timestamp: Date.now(),
             quote: {
               operation: obsObj.operation,
-              network: obsObj.network || 'mainnet',
+              network: obsObj.network || (process.env.HEDERA_NETWORK as 'mainnet' | 'testnet') || 'mainnet',
               input: {
                 token: inputToken,
                 tokenId: obsObj.quote.input.token,
@@ -924,13 +944,37 @@ Current user account: ${userAccountId}`,],
     const tokenMap: { [key: string]: string } = {
       'HBAR': 'HBAR',
       '0.0.731861': 'SAUCE', // Mainnet SAUCE
-      '0.0.456858': 'SAUCE', // Testnet SAUCE
+      '0.0.1183558': 'SAUCE', // Testnet SAUCE (corrected)
       '0.0.1456986': 'WHBAR', // Mainnet WHBAR
-      '0.0.15057': 'WHBAR', // Testnet WHBAR
+      '0.0.15058': 'WHBAR', // Testnet WHBAR (corrected)
       // Add more token mappings as needed
     };
     
     return tokenMap[tokenId] || tokenId;
+  }
+
+  /**
+   * Convert token name to correct token ID based on current network
+   */
+  private getTokenIdForNetwork(tokenName: string): string {
+    const network = (process.env.HEDERA_NETWORK as 'mainnet' | 'testnet') || 'mainnet';
+    
+    const tokenMappings = {
+      mainnet: {
+        'SAUCE': '0.0.731861',
+        'WHBAR': '0.0.1456986',
+        'HBAR': 'HBAR'
+      },
+      testnet: {
+        'SAUCE': '0.0.1183558',
+        'WHBAR': '0.0.15058', 
+        'HBAR': 'HBAR'
+      }
+    } as const;
+
+    const normalizedName = tokenName.toUpperCase();
+    const networkTokens = tokenMappings[network] as { [key: string]: string };
+    return networkTokens[normalizedName] || tokenName;
   }
 
   private extractNextStepFromAgentResponse(response: any): PendingStep | undefined {
@@ -943,17 +987,25 @@ Current user account: ${userAccountId}`,],
       try {
         const obsObj = typeof obs === 'string' ? JSON.parse(obs) : obs;
         
+        console.log('🔍 EXTRACTING NEXT STEP - RAW OBSERVATION:');
+        console.log('   obsObj.nextStep:', obsObj.nextStep);
+        console.log('   obsObj.step:', obsObj.step);
+        console.log('   obsObj.operation:', obsObj.operation);
+        console.log('   obsObj.originalParams:', obsObj.originalParams);
+        
         // Check if this is a Bonzo deposit flow with next step (CHECK FIRST - MORE SPECIFIC)
         if (obsObj.nextStep && obsObj.step && obsObj.operation && 
             (obsObj.operation.includes('bonzo') || 
              obsObj.operation.includes('whbar') || 
              obsObj.operation === 'associate_whbar' ||
+             obsObj.operation === 'associate_token' ||
              obsObj.operation.includes('deposit') || 
              obsObj.step === 'deposit')) {
           console.log('🎯 DETECTED BONZO NEXT STEP:');
           console.log(`   Step: ${obsObj.step}`);
           console.log(`   Operation: ${obsObj.operation}`);
           console.log(`   NextStep: ${obsObj.nextStep}`);
+          console.log(`   OriginalParams:`, obsObj.originalParams);
           return {
             tool: obsObj.toolInfo?.name || 'bonzo_deposit_tool',
             operation: obsObj.operation,
@@ -1007,6 +1059,13 @@ Current user account: ${userAccountId}`,],
 
     const pendingStep = userConnection.pendingStep;
     console.log(`🚀 Executing next step: ${pendingStep.step} for ${pendingStep.tool}`);
+    console.log(`🔍 Pending step details:`, {
+      tool: pendingStep.tool,
+      operation: pendingStep.operation,
+      step: pendingStep.step,
+      originalParams: pendingStep.originalParams,
+      nextStepInstructions: pendingStep.nextStepInstructions
+    });
 
     try {
       // Create the message for the next step based on the tool and operation
@@ -1015,7 +1074,9 @@ Current user account: ${userAccountId}`,],
       if (pendingStep.tool === 'bonzo_deposit_tool' && pendingStep.step === 'deposit') {
         // For Bonzo deposit flow, trigger the deposit step only
         const params = pendingStep.originalParams;
-        nextStepMessage = `Use bonzo_deposit_step_tool to deposit ${params.hbarAmount} HBAR for account ${userConnection.userAccountId} with referral code ${params.referralCode || 0}`;
+        const token = params.token || 'hbar';
+        const amount = params.amount || params.hbarAmount || 0; // Support both new and old format
+        nextStepMessage = `Use bonzo_deposit_step_tool to deposit ${amount} ${token.toUpperCase()} for account ${userConnection.userAccountId} with token "${token}", amount ${amount}, and referral code ${params.referralCode || 0}`;
       } else if (pendingStep.tool === 'saucerswap_infinity_pool_tool' && pendingStep.step === 'approval') {
         // For Infinity Pool flow, trigger the approval step after token association
         const params = pendingStep.originalParams;

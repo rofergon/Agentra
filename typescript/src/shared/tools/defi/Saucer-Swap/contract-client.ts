@@ -47,15 +47,15 @@ export const SAUCERSWAP_V2_ROUTER_CONTRACTS = {
     ROUTER_ID: "0.0.3045981",           // UniswapV2Router02 
     ROUTER_EVM: "0x00000000000000000000000000000000002e7a5d",
     WHBAR_TOKEN_ID: "0.0.1456986",     // WHBAR TOKEN 
-    SAUCE_TOKEN_ID: "0.0.731861",      // SAUCE TOKEN (from .env)
+    SAUCE_TOKEN_ID: "0.0.731861",      // SAUCE TOKEN mainnet
     SAUCE_EVM: "0x00000000000000000000000000000000000b2ad5",
     RPC_URL: "https://mainnet.hashio.io/api",
   },
   testnet: {
-    ROUTER_ID: "0.0.1414040",          // UniswapV2Router02 testnet
-    ROUTER_EVM: "0x0000000000000000000000000000000000159358", 
-    WHBAR_TOKEN_ID: "0.0.15057",       // WHBAR TOKEN testnet
-    SAUCE_TOKEN_ID: "0.0.1183558",     // SAUCE TOKEN testnet (from .env)
+    ROUTER_ID: "0.0.19264",           // UniswapV2Router02 testnet (proxy)
+    ROUTER_EVM: "0x0000000000000000000000000000000000004b40", 
+    WHBAR_TOKEN_ID: "0.0.15058",       // WHBAR TOKEN testnet (from official docs)
+    SAUCE_TOKEN_ID: "0.0.1183558",     // SAUCE TOKEN testnet (correct from official docs)
     SAUCE_EVM: "0x0000000000000000000000000000000000120f46",
     RPC_URL: "https://testnet.hashio.io/api",
   },
