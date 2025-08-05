@@ -12,7 +12,7 @@ import WebSocket, { WebSocketServer } from 'ws';
 import * as http from 'http';
 // Import Bonzo tools from the new modular structure (API-based)
 import { createBonzoLangchainTool } from '../../src/shared/tools/defi/bonzo/langchain-tools';
-import { createBonzoDepositLangchainTool, createBonzoDepositStepLangchainTool } from '../../src/shared/tools/defi/bonzoTransaction/langchain-tools';
+import { createBonzoDepositLangchainTool, createBonzoDepositStepLangchainTool, createBonzoApproveStepLangchainTool } from '../../src/shared/tools/defi/bonzoTransaction/langchain-tools';
 // Import SaucerSwap tools from the new modular structure (API-based)
 import { createSaucerSwapLangchainTool } from '../../src/shared/tools/defi/saucerswap-api/langchain-tools';
 // Import SaucerSwap Router tools (contract-based swap quotes)
@@ -502,6 +502,13 @@ Current user account: ${userAccountId}`,],
       userAccountId
     );
     
+    // Create Bonzo approve step tool (for approving ERC-20 tokens before deposit)
+    const bonzoApproveStepLangchainTool = createBonzoApproveStepLangchainTool(
+      this.agentClient,
+      { mode: AgentMode.RETURN_BYTES, accountId: userAccountId },
+      userAccountId
+    );
+    
     // Create SaucerSwap query tool for DEX data and analytics
     const saucerswapLangchainTool = createSaucerSwapLangchainTool(
       this.agentClient,
@@ -537,7 +544,7 @@ Current user account: ${userAccountId}`,],
     );
     
     // Combine all tools
-    const tools = [...hederaToolsList, bonzoLangchainTool, bonzoDepositLangchainTool, bonzoDepositStepLangchainTool, saucerswapLangchainTool, saucerswapRouterSwapQuoteLangchainTool, saucerswapRouterSwapLangchainTool, saucerswapInfinityPoolLangchainTool, saucerswapInfinityPoolStepLangchainTool];
+    const tools = [...hederaToolsList, bonzoLangchainTool, bonzoDepositLangchainTool, bonzoDepositStepLangchainTool, bonzoApproveStepLangchainTool, saucerswapLangchainTool, saucerswapRouterSwapQuoteLangchainTool, saucerswapRouterSwapLangchainTool, saucerswapInfinityPoolLangchainTool, saucerswapInfinityPoolStepLangchainTool];
 
     // Create agent
     const agent = createToolCallingAgent({
@@ -999,8 +1006,12 @@ Current user account: ${userAccountId}`,],
              obsObj.operation.includes('whbar') || 
              obsObj.operation === 'associate_whbar' ||
              obsObj.operation === 'associate_token' ||
+             obsObj.operation === 'approve_token' ||
              obsObj.operation.includes('deposit') || 
-             obsObj.step === 'deposit')) {
+             obsObj.step === 'deposit' ||
+             obsObj.step === 'token_approval' ||
+             obsObj.nextStep === 'approval' ||
+             obsObj.nextStep === 'deposit')) {
           console.log('🎯 DETECTED BONZO NEXT STEP:');
           console.log(`   Step: ${obsObj.step}`);
           console.log(`   Operation: ${obsObj.operation}`);
@@ -1071,8 +1082,14 @@ Current user account: ${userAccountId}`,],
       // Create the message for the next step based on the tool and operation
       let nextStepMessage = '';
       
-      if (pendingStep.tool === 'bonzo_deposit_tool' && pendingStep.step === 'deposit') {
-        // For Bonzo deposit flow, trigger the deposit step only
+      if (pendingStep.tool === 'bonzo_deposit_tool' && pendingStep.step === 'approval') {
+        // For Bonzo deposit flow, trigger the approval step after token association
+        const params = pendingStep.originalParams;
+        const token = params.token || 'hbar';
+        const amount = params.amount || params.hbarAmount || 0;
+        nextStepMessage = `Use bonzo_approve_step_tool to approve ${amount} ${token.toUpperCase()} for Bonzo Finance LendingPool with token "${token}", amount ${amount}, userAccountId "${userConnection.userAccountId}"`;
+      } else if (pendingStep.tool === 'bonzo_deposit_tool' && pendingStep.step === 'deposit') {
+        // For Bonzo deposit flow, trigger the deposit step only (after approval or for HBAR)
         const params = pendingStep.originalParams;
         const token = params.token || 'hbar';
         const amount = params.amount || params.hbarAmount || 0; // Support both new and old format

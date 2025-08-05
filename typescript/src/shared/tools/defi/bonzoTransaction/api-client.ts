@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { Context } from '../../../configuration';
-import { Client, TokenAssociateTransaction, ContractExecuteTransaction, ContractFunctionParameters, Hbar, AccountId, ContractId, AccountInfoQuery } from '@hashgraph/sdk';
+import { Client, TokenAssociateTransaction, ContractExecuteTransaction, ContractFunctionParameters, Hbar, AccountId, ContractId, AccountInfoQuery, AccountAllowanceApproveTransaction, TokenId } from '@hashgraph/sdk';
 import { handleTransaction } from '../../../strategies/tx-mode-strategy';
 import Long from 'long';
 import { bonzoDepositParameters, BONZO_CONFIG, getTokenConfig, convertToBaseUnits, BonzoSupportedToken } from '../../../parameter-schemas/bonzo.zod';
@@ -21,6 +21,7 @@ export const BONZO_DEPOSIT_CONFIG = {
 // Available operations enum
 export const BONZO_DEPOSIT_OPERATIONS = {
   ASSOCIATE_TOKEN: 'associate_token',
+  APPROVE_TOKEN: 'approve_token',
   DEPOSIT_TOKEN: 'deposit_token',
   FULL_DEPOSIT_FLOW: 'full_deposit_flow',
 } as const;
@@ -145,7 +146,10 @@ This tool enables multi-token deposits into Bonzo Finance DeFi protocol on Heder
 
 **Deposit Process:**
 1. Token Association (if needed) - Associates your account with the selected token
-2. Token Deposit - Calls LendingPool.deposit() with your tokens to receive interest-bearing aTokens
+2. Token Approval (for ERC-20 tokens) - Gives allowance to LendingPool contract to transfer your tokens  
+3. Token Deposit - Calls LendingPool.deposit() with your tokens to receive interest-bearing aTokens
+
+**Note:** HBAR deposits only require steps 1 and 3, as HBAR is transferred directly via payable amount. ERC-20 tokens (SAUCE, xSAUCE, USDC) require all 3 steps including approval.
 
 **Parameters:**
 - token (string, required): Token to deposit - 'hbar', 'sauce', 'xsauce', or 'usdc' (default: 'hbar')
@@ -230,6 +234,87 @@ export const associateToken = async (
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error during token association',
       suggestion: 'Ensure the account has sufficient HBAR for transaction fees and the account key is valid',
+    };
+  }
+};
+
+/**
+ * Execute token approval for Bonzo Finance LendingPool contract
+ */
+export const approveTokenForLendingPool = async (
+  client: Client,
+  context: Context,
+  params: { 
+    userAccountId: string; 
+    tokenId: string; 
+    amount: string; 
+    tokenSymbol: string;
+    originalParams?: any;
+  },
+) => {
+  try {
+    console.log(`💰 Approving ${params.tokenSymbol} token for Bonzo LendingPool...`);
+    console.log(`👤 Account: ${params.userAccountId}`);
+    console.log(`🪙 Token: ${params.tokenSymbol} (${params.tokenId})`);
+    console.log(`💰 Amount: ${params.amount} smallest units`);
+    console.log(`📍 LendingPool Contract: ${BONZO_CONFIG.LENDING_POOL_CONTRACT_ID}`);
+    
+    const tx = new AccountAllowanceApproveTransaction()
+      .approveTokenAllowance(
+        TokenId.fromString(params.tokenId),
+        params.userAccountId,
+        BONZO_CONFIG.LENDING_POOL_CONTRACT_ID,
+        Long.fromString(params.amount)
+      );
+    
+    const result = await handleTransaction(tx, client, context);
+    
+    // In RETURN_BYTES mode, log preparation instead of completion
+    if (context.mode === 'returnBytes') {
+      console.log(`🔗 ${params.tokenSymbol} approval transaction prepared for signature`);
+    } else {
+      console.log(`✅ ${params.tokenSymbol} approval completed`);
+    }
+    
+    // If result contains bytes, return them at the top level for the websocket agent
+    if (result && typeof result === 'object' && 'bytes' in result) {
+      return {
+        step: 'token_approval',
+        operation: BONZO_DEPOSIT_OPERATIONS.APPROVE_TOKEN,
+        success: true,
+        tokenId: params.tokenId,
+        tokenSymbol: params.tokenSymbol,
+        approvedAmount: params.amount,
+        spender: BONZO_CONFIG.LENDING_POOL_CONTRACT_ID,
+        message: context.mode === 'returnBytes' 
+          ? `${params.tokenSymbol} approval transaction ready for signature`
+          : `${params.tokenSymbol} approval completed successfully`,
+        bytes: result.bytes, // Put bytes at top level
+        nextStep: 'deposit', // Next step after approval
+        originalParams: params.originalParams, // Include original parameters for next step
+        result,
+      };
+    }
+    
+    return {
+      step: 'token_approval',
+      operation: BONZO_DEPOSIT_OPERATIONS.APPROVE_TOKEN,
+      success: true,
+      tokenId: params.tokenId,
+      tokenSymbol: params.tokenSymbol,
+      approvedAmount: params.amount,
+      spender: BONZO_CONFIG.LENDING_POOL_CONTRACT_ID,
+      message: `${params.tokenSymbol} approval completed successfully`,
+      result,
+    };
+  } catch (error) {
+    console.error(`❌ ${params.tokenSymbol} approval failed:`, error);
+    return {
+      step: 'token_approval',
+      operation: BONZO_DEPOSIT_OPERATIONS.APPROVE_TOKEN,
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error during token approval',
+      suggestion: `Ensure the account has sufficient HBAR for transaction fees and ${params.tokenSymbol} token is associated`,
     };
   }
 };
@@ -380,15 +465,35 @@ export const bonzoDepositFlow = async (
         });
         
         // In RETURN_BYTES mode, return immediately after first transaction
+        // Next step depends on token type: approval for ERC-20, direct deposit for HBAR
+        const nextStep = normalisedParams.isNativeHbar ? 'deposit' : 'approval';
         return {
           ...associationResult,
-          nextStep: 'deposit',
+          nextStep,
           originalParams: params, // Include original parameters for next step
           message: `${normalisedParams.symbol} token association transaction ready for signature`,
-          instructions: `Sign this transaction to associate ${normalisedParams.symbol} token, then initiate the deposit step`,
+          instructions: `Sign this transaction to associate ${normalisedParams.symbol} token, then proceed to ${nextStep} step`,
+        };
+      } else if (!normalisedParams.isNativeHbar) {
+        // Skip association but need approval for ERC-20 tokens
+        console.log('🚀 Starting Bonzo Finance deposit flow (RETURN_BYTES mode)...');
+        console.log(`Step 1: ${normalisedParams.symbol} Token Approval - Preparing transaction for signature...`);
+        
+        const approvalResult = await approveTokenForLendingPool(client, context, {
+          userAccountId: params.userAccountId || context.accountId || '',
+          tokenId: normalisedParams.tokenId,
+          amount: normalisedParams.amountInBaseUnits,
+          tokenSymbol: normalisedParams.symbol,
+          originalParams: params,
+        });
+        
+        return {
+          ...approvalResult,
+          message: `${normalisedParams.symbol} approval transaction ready for signature`,
+          instructions: `Sign this transaction to approve ${normalisedParams.symbol} for Bonzo Finance, then proceed to deposit step`,
         };
       } else {
-        // Skip association, go directly to deposit
+        // Skip association and approval for HBAR, go directly to deposit
         console.log('🚀 Starting Bonzo Finance deposit flow (RETURN_BYTES mode)...');
         console.log(`Step 1: ${normalisedParams.symbol} Deposit - Preparing transaction for signature...`);
         
@@ -403,13 +508,14 @@ export const bonzoDepositFlow = async (
       }
     }
     
-    // Legacy mode: Execute both transactions sequentially (for direct execution)
+    // Legacy mode: Execute transactions sequentially (for direct execution)
     const results = [];
+    let stepNumber = 1;
     
     // Step 1: Associate token if requested
     if (params.associateToken) {
       console.log('🚀 Starting Bonzo Finance deposit flow...');
-      console.log(`Step 1: ${normalisedParams.symbol} Token Association`);
+      console.log(`Step ${stepNumber}: ${normalisedParams.symbol} Token Association`);
       
       const associationResult = await associateToken(client, context, {
         userAccountId: params.userAccountId || context.accountId || '',
@@ -428,11 +534,39 @@ export const bonzoDepositFlow = async (
         };
       }
       
-      console.log(`✅ Step 1 completed: ${normalisedParams.symbol} token associated`);
+      console.log(`✅ Step ${stepNumber} completed: ${normalisedParams.symbol} token associated`);
+      stepNumber++;
     }
     
-    // Step 2: Execute deposit
-    console.log(`Step 2: ${normalisedParams.symbol} Deposit to Bonzo Finance`);
+    // Step 2: Approve token for ERC-20 tokens (skip for HBAR)
+    if (!normalisedParams.isNativeHbar) {
+      console.log(`Step ${stepNumber}: ${normalisedParams.symbol} Token Approval`);
+      
+      const approvalResult = await approveTokenForLendingPool(client, context, {
+        userAccountId: params.userAccountId || context.accountId || '',
+        tokenId: normalisedParams.tokenId,
+        amount: normalisedParams.amountInBaseUnits,
+        tokenSymbol: normalisedParams.symbol,
+        originalParams: params,
+      });
+      
+      results.push(approvalResult);
+      
+      if (!approvalResult.success) {
+        return {
+          operation: BONZO_DEPOSIT_OPERATIONS.FULL_DEPOSIT_FLOW,
+          success: false,
+          error: 'Token approval failed',
+          steps: results,
+        };
+      }
+      
+      console.log(`✅ Step ${stepNumber} completed: ${normalisedParams.symbol} token approved`);
+      stepNumber++;
+    }
+    
+    // Final Step: Execute deposit
+    console.log(`Step ${stepNumber}: ${normalisedParams.symbol} Deposit to Bonzo Finance`);
     const depositResult = await executeBonzoDeposit(client, context, params);
     results.push(depositResult);
     
