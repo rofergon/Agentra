@@ -29,11 +29,11 @@ export const SAUCERSWAP_ROUTER_SWAP_TOOL_INFO = {
   description: 'Execute real token swaps on SaucerSwap DEX using UniswapV2Router02 contract',
   contractId: {
     mainnet: '0.0.3045981',  // UniswapV2Router02
-    testnet: '0.0.1414040'   // UniswapV2Router02
+    testnet: '0.0.19264'     // UniswapV2Router02 (proxy)
   },
   evmAddress: {
     mainnet: '0x00000000000000000000000000000000002e7a5d',  // UniswapV2Router02
-    testnet: '0x0000000000000000000000000000000000159358'   // UniswapV2Router02
+    testnet: '0x0000000000000000000000000000000000004b40'   // UniswapV2Router02 (proxy)
   },
   supportedOperations: [
     'swap_exact_hbar_for_tokens',
@@ -62,8 +62,8 @@ export const SAUCERSWAP_ROUTER_SWAP_TOOL_INFO = {
     },
     testnet: {
       HBAR: 'Native HBAR (auto-converts to WHBAR)', 
-      SAUCE: '0.0.456858',
-      WHBAR: '0.0.15057'
+      SAUCE: '0.0.1183558',  // Corrected from official docs
+      WHBAR: '0.0.15058'     // Corrected from official docs
     }
   },
   riskWarnings: [

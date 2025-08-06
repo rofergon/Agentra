@@ -24,20 +24,53 @@ import { ethers } from 'ethers';
 export const SAUCERSWAP_INFINITY_POOL_TOOL = 'saucerswap_infinity_pool_tool';
 export const SAUCERSWAP_INFINITY_POOL_STEP_TOOL = 'saucerswap_infinity_pool_step_tool';
 
-// Configuration constants for SaucerSwap Infinity Pool (Mainnet)
+// Network Configuration Type
+export type HederaNet = "mainnet" | "testnet";
+
+// Configuration constants for SaucerSwap Infinity Pool
+export const INFINITY_POOL_NETWORK_CONFIG = {
+  mainnet: {
+    // Contract addresses (Mainnet)
+    MOTHERSHIP_CONTRACT_ID: '0.0.1460199',
+    MOTHERSHIP_EVM_ADDRESS: '0x00000000000000000000000000000000001647e7',
+    
+    // Token IDs
+    SAUCE_TOKEN_ID: '0.0.731861',
+    XSAUCE_TOKEN_ID: '0.0.1460200',
+    
+    // EVM addresses
+    SAUCE_EVM_ADDRESS: '0x00000000000000000000000000000000000b2ad5',
+    XSAUCE_EVM_ADDRESS: '0x00000000000000000000000000000000001647e8',
+    
+    // Chain settings
+    CHAIN_ID: 295,                    // Hedera Mainnet chain ID
+  },
+  testnet: {
+    // Contract addresses (Testnet) - From official SaucerSwap docs
+    MOTHERSHIP_CONTRACT_ID: '0.0.1418650',
+    MOTHERSHIP_EVM_ADDRESS: '0x00000000000000000000000000000000001599ea',
+    
+    // Token IDs
+    SAUCE_TOKEN_ID: '0.0.1183558',
+    XSAUCE_TOKEN_ID: '0.0.1418651',
+    
+    // EVM addresses
+    SAUCE_EVM_ADDRESS: '0x0000000000000000000000000000000000120f46',
+    XSAUCE_EVM_ADDRESS: '0x00000000000000000000000000000000001599eb',
+    
+    // Chain settings
+    CHAIN_ID: 296,                    // Hedera Testnet chain ID
+  },
+} as const;
+
+// Helper function to get network config based on HEDERA_NETWORK env variable
+export const getInfinityPoolConfig = (network?: HederaNet) => {
+  const targetNetwork = network || (process.env.HEDERA_NETWORK as HederaNet) || 'mainnet';
+  return INFINITY_POOL_NETWORK_CONFIG[targetNetwork];
+};
+
+// Shared configuration constants (same for both networks)
 export const INFINITY_POOL_CONFIG = {
-  // Contract addresses (Mainnet)
-  MOTHERSHIP_CONTRACT_ID: '0.0.1460199',
-  MOTHERSHIP_EVM_ADDRESS: '0x00000000000000000000000000000000001647e7',
-  
-  // Token IDs
-  SAUCE_TOKEN_ID: '0.0.731861',
-  XSAUCE_TOKEN_ID: '0.0.1460200',
-  
-  // EVM addresses
-  SAUCE_EVM_ADDRESS: '0x00000000000000000000000000000000000b2ad5',
-  XSAUCE_EVM_ADDRESS: '0x00000000000000000000000000000000001647e8',
-  
   // Token decimals
   DECIMALS: 6,
   
@@ -53,7 +86,6 @@ export const INFINITY_POOL_CONFIG = {
   
   // EthereumTransaction settings for HTS system contracts
   MAX_GAS_ALLOWANCE_HBAR: 1.0,      // HBAR allowance for system contract operations
-  CHAIN_ID: 295,                    // Hedera Mainnet chain ID
   
   // Contract ABIs for ethers
   MOTHERSHIP_ABI: [
@@ -223,7 +255,7 @@ const createEthereumTransaction = async (
       to: contractAddress,
       data,
       gasLimit: BigInt(gasLimit),
-      chainId: INFINITY_POOL_CONFIG.CHAIN_ID,
+      chainId: getInfinityPoolConfig().CHAIN_ID,
       type: 2, // EIP-1559 transaction
       maxFeePerGas: ethers.parseUnits('100', 'gwei'), // Reasonable fee
       maxPriorityFeePerGas: ethers.parseUnits('2', 'gwei'),
@@ -264,7 +296,8 @@ const executeEthereumContractCall = async (
       console.log(`🔄 returnBytes mode: Creating transaction for signing...`);
       
       // For returnBytes mode, use ContractExecuteTransaction with improved gas
-      const contractId = ContractId.fromString(INFINITY_POOL_CONFIG.MOTHERSHIP_CONTRACT_ID);
+      const networkConfig = getInfinityPoolConfig();
+      const contractId = ContractId.fromString(networkConfig.MOTHERSHIP_CONTRACT_ID);
       const functionParameters = new ContractFunctionParameters()
         .addUint256(Long.fromString(params[0].toString()));
       
@@ -352,14 +385,19 @@ const infinityPoolPrompt = (context: Context = {}) => {
     context,
   );
   const usageInstructions = PromptGenerator.getParameterUsageInstructions();
+  
+  // Get network configuration dynamically
+  const networkConfig = getInfinityPoolConfig();
+  const currentNetwork = (process.env.HEDERA_NETWORK as HederaNet) || 'mainnet';
+  const networkDisplayName = currentNetwork === 'mainnet' ? 'Hedera Mainnet' : 'Hedera Testnet';
 
   return `
 ${contextSnippet}
 
-This tool enables staking SAUCE tokens in SaucerSwap's Infinity Pool on Hedera Mainnet to earn xSAUCE.
+This tool enables staking SAUCE tokens in SaucerSwap's Infinity Pool on ${networkDisplayName} to earn xSAUCE.
 
  **IMPORTANT SECURITY NOTES:**
- - This tool operates on HEDERA MAINNET with REAL FUNDS
+ - This tool operates on ${networkDisplayName.toUpperCase()} ${currentNetwork === 'mainnet' ? 'with REAL FUNDS' : 'for TESTING'}
  - All transactions are irreversible once confirmed
  - Double-check amounts before confirming transactions
  - Only use with accounts you control
@@ -388,10 +426,10 @@ This tool enables staking SAUCE tokens in SaucerSwap's Infinity Pool on Hedera M
 - associateTokens (boolean, optional): Whether to associate tokens (default: true)
 - transactionMemo (string, optional): Optional memo for transactions
 
-**Contract Addresses (Hedera Mainnet):**
-- MotherShip Contract: ${INFINITY_POOL_CONFIG.MOTHERSHIP_CONTRACT_ID} (${INFINITY_POOL_CONFIG.MOTHERSHIP_EVM_ADDRESS})
-- SAUCE Token: ${INFINITY_POOL_CONFIG.SAUCE_TOKEN_ID} (${INFINITY_POOL_CONFIG.SAUCE_EVM_ADDRESS})
-- xSAUCE Token: ${INFINITY_POOL_CONFIG.XSAUCE_TOKEN_ID} (${INFINITY_POOL_CONFIG.XSAUCE_EVM_ADDRESS})
+**Contract Addresses (${networkDisplayName}):**
+- MotherShip Contract: ${networkConfig.MOTHERSHIP_CONTRACT_ID} (${networkConfig.MOTHERSHIP_EVM_ADDRESS})
+- SAUCE Token: ${networkConfig.SAUCE_TOKEN_ID} (${networkConfig.SAUCE_EVM_ADDRESS})
+- xSAUCE Token: ${networkConfig.XSAUCE_TOKEN_ID} (${networkConfig.XSAUCE_EVM_ADDRESS})
 
 **Available Operations:**
 - associate_tokens: Associate SAUCE and xSAUCE tokens to your account
@@ -495,6 +533,9 @@ export const approveSauceForMotherShip = async (
   params: { userAccountId: string; amount: string; originalParams?: any },
 ) => {
   try {
+    // Get network configuration dynamically
+    const networkConfig = getInfinityPoolConfig();
+    
     console.log('🚨 SAUCE APPROVAL CALLED:');
     console.log(`👤 Account: ${params.userAccountId}`);
     console.log(`💰 Amount: ${params.amount} smallest units`);
@@ -506,9 +547,9 @@ export const approveSauceForMotherShip = async (
     // Create approval transaction without gas first
     const tx = new AccountAllowanceApproveTransaction()
       .approveTokenAllowance(
-        TokenId.fromString(INFINITY_POOL_CONFIG.SAUCE_TOKEN_ID),
+        TokenId.fromString(networkConfig.SAUCE_TOKEN_ID),
         params.userAccountId,
-        INFINITY_POOL_CONFIG.MOTHERSHIP_CONTRACT_ID,
+        networkConfig.MOTHERSHIP_CONTRACT_ID,
         Long.fromString(params.amount)
       );
     
@@ -594,6 +635,9 @@ const checkSauceAllowance = async (
   requiredAmount: string,
 ): Promise<{ hasAllowance: boolean; currentAllowance: string; needsApproval: boolean }> => {
   try {
+    // Get network configuration dynamically
+    const networkConfig = getInfinityPoolConfig();
+    
     console.log(`🔍 Checking SAUCE allowance for account ${accountId}...`);
     
     const mirrorNodeUrl = process.env.HEDERA_NETWORK === 'mainnet' 
@@ -612,8 +656,8 @@ const checkSauceAllowance = async (
     
     // Look for SAUCE token allowance to MotherShip contract
     const sauceAllowance = allowancesData.allowances?.find((allowance: any) => 
-      allowance.token_id === INFINITY_POOL_CONFIG.SAUCE_TOKEN_ID &&
-      allowance.spender === INFINITY_POOL_CONFIG.MOTHERSHIP_CONTRACT_ID
+      allowance.token_id === networkConfig.SAUCE_TOKEN_ID &&
+      allowance.spender === networkConfig.MOTHERSHIP_CONTRACT_ID
     );
     
     if (sauceAllowance) {
@@ -652,6 +696,8 @@ export const stakeSauceTokens = async (
   skipAllowanceCheck: boolean = false,
 ) => {
   try {
+    // Get network configuration dynamically
+    const networkConfig = getInfinityPoolConfig();
     const normalizedParams = normalizeInfinityPoolParams(params, context);
     
     if (!normalizedParams.sauceAmountInSmallestUnits) {
@@ -692,13 +738,13 @@ export const stakeSauceTokens = async (
     }
 
          console.log(`🥩 Staking ${params.sauceAmount} SAUCE tokens...`);
-     console.log(`📍 MotherShip Contract: ${INFINITY_POOL_CONFIG.MOTHERSHIP_EVM_ADDRESS}`);
+     console.log(`📍 MotherShip Contract: ${networkConfig.MOTHERSHIP_EVM_ADDRESS}`);
      console.log(`🏦 Account: ${normalizedParams.userAccountId}`);
      console.log(`🔧 Using EthereumTransaction with maxGasAllowanceHbar for HTS compatibility`);
 
      // Use EthereumTransaction with maxGasAllowanceHbar to handle HTS system contract costs
      const result = await executeEthereumContractCall(
-       INFINITY_POOL_CONFIG.MOTHERSHIP_EVM_ADDRESS,
+       networkConfig.MOTHERSHIP_EVM_ADDRESS,
        'enter',
        [normalizedParams.sauceAmountInSmallestUnits],
        client,
@@ -721,7 +767,7 @@ export const stakeSauceTokens = async (
         stakeAmount: params.sauceAmount,
         stakeAmountSmallestUnits: normalizedParams.sauceAmountInSmallestUnits,
         userAccount: normalizedParams.userAccountId,
-        mothershipContract: INFINITY_POOL_CONFIG.MOTHERSHIP_CONTRACT_ID,
+        mothershipContract: networkConfig.MOTHERSHIP_CONTRACT_ID,
         message: context.mode === 'returnBytes' 
           ? `SAUCE staking transaction ready for signature (${params.sauceAmount} SAUCE)`
           : `Successfully staked ${params.sauceAmount} SAUCE tokens in Infinity Pool`,
@@ -737,7 +783,7 @@ export const stakeSauceTokens = async (
       stakeAmount: params.sauceAmount,
       stakeAmountSmallestUnits: normalizedParams.sauceAmountInSmallestUnits,
       userAccount: normalizedParams.userAccountId,
-      mothershipContract: INFINITY_POOL_CONFIG.MOTHERSHIP_CONTRACT_ID,
+      mothershipContract: networkConfig.MOTHERSHIP_CONTRACT_ID,
       message: `Successfully staked ${params.sauceAmount} SAUCE tokens in Infinity Pool`,
       nextSteps: [
         'Your SAUCE tokens have been staked in the Infinity Pool',
@@ -782,6 +828,8 @@ export const unstakeXSauceTokens = async (
   params: z.infer<ReturnType<typeof infinityPoolStakeParameters>>,
 ) => {
   try {
+    // Get network configuration dynamically
+    const networkConfig = getInfinityPoolConfig();
     const normalizedParams = normalizeInfinityPoolParams(params, context);
     
     if (!normalizedParams.xSauceAmountInSmallestUnits) {
@@ -789,13 +837,13 @@ export const unstakeXSauceTokens = async (
     }
 
          console.log(`🔄 Unstaking ${params.xSauceAmount} xSAUCE tokens...`);
-     console.log(`📍 MotherShip Contract: ${INFINITY_POOL_CONFIG.MOTHERSHIP_EVM_ADDRESS}`);
+     console.log(`📍 MotherShip Contract: ${networkConfig.MOTHERSHIP_EVM_ADDRESS}`);
      console.log(`🏦 Account: ${normalizedParams.userAccountId}`);
      console.log(`🔧 Using EthereumTransaction with maxGasAllowanceHbar for HTS compatibility`);
 
      // Use EthereumTransaction with maxGasAllowanceHbar to handle HTS system contract costs
      const result = await executeEthereumContractCall(
-       INFINITY_POOL_CONFIG.MOTHERSHIP_EVM_ADDRESS,
+       networkConfig.MOTHERSHIP_EVM_ADDRESS,
        'leave',
        [normalizedParams.xSauceAmountInSmallestUnits],
        client,
@@ -818,7 +866,7 @@ export const unstakeXSauceTokens = async (
         unstakeAmount: params.xSauceAmount,
         unstakeAmountSmallestUnits: normalizedParams.xSauceAmountInSmallestUnits,
         userAccount: normalizedParams.userAccountId,
-        mothershipContract: INFINITY_POOL_CONFIG.MOTHERSHIP_CONTRACT_ID,
+        mothershipContract: networkConfig.MOTHERSHIP_CONTRACT_ID,
         message: context.mode === 'returnBytes' 
           ? `xSAUCE unstaking transaction ready for signature (${params.xSauceAmount} xSAUCE)`
           : `Successfully unstaked ${params.xSauceAmount} xSAUCE tokens from Infinity Pool`,
@@ -834,7 +882,7 @@ export const unstakeXSauceTokens = async (
       unstakeAmount: params.xSauceAmount,
       unstakeAmountSmallestUnits: normalizedParams.xSauceAmountInSmallestUnits,
       userAccount: normalizedParams.userAccountId,
-      mothershipContract: INFINITY_POOL_CONFIG.MOTHERSHIP_CONTRACT_ID,
+      mothershipContract: networkConfig.MOTHERSHIP_CONTRACT_ID,
       message: `Successfully unstaked ${params.xSauceAmount} xSAUCE tokens from Infinity Pool`,
       nextSteps: [
         'Your xSAUCE tokens have been unstaked',
@@ -876,12 +924,15 @@ export const infinityPoolStakeFlow = async (
   params: z.infer<ReturnType<typeof infinityPoolStakeParameters>>,
 ) => {
   try {
+    // Get network configuration dynamically
+    const networkConfig = getInfinityPoolConfig();
+    
     // Route to appropriate operation
     switch (params.operation) {
       case INFINITY_POOL_OPERATIONS.ASSOCIATE_TOKENS:
         return await associateInfinityPoolTokens(client, context, {
           userAccountId: params.userAccountId || context.accountId || '',
-          tokenIds: [INFINITY_POOL_CONFIG.SAUCE_TOKEN_ID, INFINITY_POOL_CONFIG.XSAUCE_TOKEN_ID],
+          tokenIds: [networkConfig.SAUCE_TOKEN_ID, networkConfig.XSAUCE_TOKEN_ID],
         });
 
              case INFINITY_POOL_OPERATIONS.APPROVE_SAUCE:
@@ -930,6 +981,8 @@ const executeFullStakeFlow = async (
   params: z.infer<ReturnType<typeof infinityPoolStakeParameters>>,
 ) => {
   try {
+    // Get network configuration dynamically
+    const networkConfig = getInfinityPoolConfig();
     // ⚠️ CRITICAL: In RETURN_BYTES mode, ONLY process ONE transaction at a time
     if (context.mode === 'returnBytes') {
       console.log('🚀 Starting SaucerSwap Infinity Pool staking flow (RETURN_BYTES mode)...');
@@ -942,7 +995,7 @@ const executeFullStakeFlow = async (
         
         const associationResult = await associateInfinityPoolTokens(client, context, {
           userAccountId: params.userAccountId || context.accountId || '',
-          tokenIds: [INFINITY_POOL_CONFIG.SAUCE_TOKEN_ID, INFINITY_POOL_CONFIG.XSAUCE_TOKEN_ID],
+          tokenIds: [networkConfig.SAUCE_TOKEN_ID, networkConfig.XSAUCE_TOKEN_ID],
         });
         
         // CRITICAL: Return immediately after first transaction
@@ -969,7 +1022,7 @@ const executeFullStakeFlow = async (
       
       const associationResult = await associateInfinityPoolTokens(client, context, {
         userAccountId: params.userAccountId || context.accountId || '',
-        tokenIds: [INFINITY_POOL_CONFIG.SAUCE_TOKEN_ID, INFINITY_POOL_CONFIG.XSAUCE_TOKEN_ID],
+        tokenIds: [networkConfig.SAUCE_TOKEN_ID, networkConfig.XSAUCE_TOKEN_ID],
       });
       
       results.push(associationResult);

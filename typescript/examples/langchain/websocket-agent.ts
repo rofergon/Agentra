@@ -12,7 +12,7 @@ import WebSocket, { WebSocketServer } from 'ws';
 import * as http from 'http';
 // Import Bonzo tools from the new modular structure (API-based)
 import { createBonzoLangchainTool } from '../../src/shared/tools/defi/bonzo/langchain-tools';
-import { createBonzoDepositLangchainTool, createBonzoDepositStepLangchainTool } from '../../src/shared/tools/defi/bonzoTransaction/langchain-tools';
+import { createBonzoDepositLangchainTool, createBonzoDepositStepLangchainTool, createBonzoApproveStepLangchainTool } from '../../src/shared/tools/defi/bonzoTransaction/langchain-tools';
 // Import SaucerSwap tools from the new modular structure (API-based)
 import { createSaucerSwapLangchainTool } from '../../src/shared/tools/defi/saucerswap-api/langchain-tools';
 // Import SaucerSwap Router tools (contract-based swap quotes)
@@ -21,6 +21,8 @@ import { createSaucerswapRouterSwapQuoteLangchainTool } from '../../src/shared/t
 import { createSaucerSwapRouterSwapLangchainTool } from '../../src/shared/tools/defi/Saucer-Swap/langchain-tools';
 // Import SaucerSwap Infinity Pool staking tools
 import { createSaucerswapInfinityPoolLangchainTool, createSaucerswapInfinityPoolStepLangchainTool } from '../../src/shared/tools/defi/SaucerSwap-InfinityPool/langchain-tools';
+// Import AutoSwapLimit limit order tools
+import { createAutoSwapLimitLangchainTool } from '../../src/shared/tools/defi/autoswap-limit/langchain-tools';
 
 // WebSocket message types
 interface BaseMessage {
@@ -204,6 +206,7 @@ class HederaWebSocketAgent {
 - ::BONZO:: DeFi Transactions with Bonzo Finance (HBAR deposits to earn interest)
 - ::SAUCERSWAP:: DeFi Analytics with SaucerSwap (real-time DEX data, trading stats, farm yields)
 - 🥩 DeFi Staking with SaucerSwap Infinity Pool (SAUCE staking to earn xSAUCE rewards)
+- 🎯 DeFi Limit Orders with AutoSwapLimit (automated token swaps at specific prices)
 
 **RESPONSE FORMATTING - USE ICONS CONSISTENTLY:**
 - 💡 Use icons to make responses more visual and intuitive
@@ -340,13 +343,28 @@ When user requests ANY swap operation, ALWAYS follow this exact sequence:
 - Example: "trade HBAR to SAUCE" → ALWAYS show quote first, then wait for confirmation
 - ⚠️ NEVER execute swap directly without showing quote first
 
+**🎯 CRITICAL LIMIT ORDER DETECTION - MANDATORY:**
+When user requests limit orders, use AutoSwapLimit (NOT immediate swaps):
+- **Keywords that trigger LIMIT ORDER**: "buy [TOKEN] at [PRICE]", "buy [TOKEN] when price reaches [PRICE]", "set limit", "program order", "order at"
+- **Examples that should use AutoSwapLimit**:
+  - "buy SAUCE at 0.040 USDC" → Use autoswap_limit_tool with create_swap_order
+  - "buy SAUCE when price drops to 0.001 HBAR" → Use autoswap_limit_tool with create_swap_order
+  - "set up a limit order for SAUCE at 0.05 HBAR" → Use autoswap_limit_tool with create_swap_order
+- **Examples that should use immediate swap**:
+  - "swap 100 HBAR for SAUCE" → Use saucerswap_router_swap_quote_tool (immediate)
+  - "buy SAUCE now" → Use saucerswap_router_swap_quote_tool (immediate)
+- ⚠️ NEVER use immediate swap tools when user mentions a specific price point
+
 **::SAUCERSWAP:: SaucerSwap Router (Token Swaps):**
 - Use for: executing real token swaps ONLY after quote confirmation
 - Keywords for EXECUTION: "execute swap", "confirm swap", "proceed with swap", "yes proceed", "confirm trade"
 - Operations: swap_exact_hbar_for_tokens, swap_exact_tokens_for_hbar, swap_exact_tokens_for_tokens
 - Real transaction creation using UniswapV2Router02 contract
 - Built-in slippage protection and deadline management
-- Supports SAUCE token (0.0.731861 mainnet / 0.0.456858 testnet)
+- IMPORTANT: Use correct token IDs for current network:
+  - Current network: ${process.env.HEDERA_NETWORK || 'mainnet'}
+  - SAUCE testnet: 0.0.1183558 | SAUCE mainnet: 0.0.731861  
+  - WHBAR testnet: 0.0.15058 | WHBAR mainnet: 0.0.1456986
 - Icons: 🔄 💱 💰 🚀 ⚡
 
 **::SAUCERSWAP:: SaucerSwap Infinity Pool (SAUCE Staking):**
@@ -361,9 +379,36 @@ When user requests ANY swap operation, ALWAYS follow this exact sequence:
 - MotherShip contract (0.0.1460199) handles SAUCE → xSAUCE conversions
 - Icons: 🥩 💰 📈 🎯 ⏳
 
+**::AUTOSWAPLIMIT:: AutoSwapLimit (Limit Orders):**
+- Use for: creating automated limit orders to swap HBAR for tokens at specific prices
+- Keywords: "limit order", "buy order", "automated swap", "price trigger", "when price drops", "when price reaches", "at price", "buy at", "order at", "set limit", "program order"
+- **CRITICAL DETECTION**: When user says "buy [TOKEN] at [PRICE]" or "buy [TOKEN] when price reaches [PRICE]" → Use AutoSwapLimit
+- **CRITICAL DETECTION**: When user mentions a specific price point for buying → Use AutoSwapLimit
+- **CRITICAL DETECTION**: When user wants to "set up" or "program" an order → Use AutoSwapLimit
+- Operations: create_swap_order, get_order_details, get_contract_config, get_router_info, get_contract_balance, get_next_order_id
+- **CRITICAL**: For limit order creation, use "create_swap_order" operation
+- **REQUIRED PARAMETERS**: tokenOut (e.g., "SAUCE"), amountIn (HBAR amount), minAmountOut (wei), triggerPrice (wei)
+- **PRICE CONVERSION**: When user mentions price in USDC, convert to HBAR equivalent for triggerPrice
+- **PRICE CONVERSION**: When user mentions price in USD, convert to HBAR equivalent for triggerPrice
+- **PRICE CONVERSION**: When user mentions price in HBAR, use directly for triggerPrice
+- **PARAMETER CALCULATION**: 
+  - tokenOut: Extract token name from user request (e.g., "SAUCE")
+  - amountIn: Use reasonable HBAR amount (e.g., 0.5 HBAR) if not specified
+  - minAmountOut: Use "1" (minimum amount) if not specified
+  - triggerPrice: Convert user's price to wei format
+- Order executes automatically when market price reaches trigger price
+- Uses SaucerSwap liquidity pools for execution
+- Minimum order amount: 0.1 HBAR
+- Default expiration: 24 hours (configurable 1-168 hours)
+- Icons: 🎯 💰 📈 ⏰ 🔄
+
 **OPERATION RULES:**
 - For SAUCE staking: Use ONLY saucerswap_infinity_pool_tool with "full_stake_flow"
 - For token swaps: ALWAYS show quote first, then wait for confirmation before executing
+- **CRITICAL**: For limit orders: Use autoswap_limit_tool with "create_swap_order" operation
+- **CRITICAL**: When user says "buy [TOKEN] at [PRICE]" → Use AutoSwapLimit (NOT immediate swap)
+- **CRITICAL**: When user mentions specific price for buying → Use AutoSwapLimit (NOT immediate swap)
+- **CRITICAL**: When user wants to "set up" or "program" an order → Use AutoSwapLimit
 - Multi-step flows handle all steps automatically
 - BE CONCISE - avoid repeating information already shared
 - Choose the right protocol based on keywords automatically
@@ -371,7 +416,9 @@ When user requests ANY swap operation, ALWAYS follow this exact sequence:
 **🎯 PROTOCOL SEPARATION - CRITICAL:**
 - **::BONZO:: Bonzo Finance**: HBAR lending/borrowing protocol (collateral, debt, LTV, health factor)
 - **::SAUCERSWAP:: SaucerSwap DEX**: Token swaps, LP farming, and SAUCE staking (completely separate from Bonzo)
+- **::AUTOSWAPLIMIT:: AutoSwapLimit**: Automated limit orders for token swaps at specific prices
 - ⚠️ NEVER mix Bonzo lending positions with SaucerSwap farming/staking data
+- ⚠️ NEVER mix limit orders with immediate swaps - they serve different purposes
 
 **🎯 SAUCERSWAP POSITION QUERIES:**
 When user asks about ::SAUCERSWAP:: **SaucerSwap** positions:
@@ -401,6 +448,7 @@ When user asks about ::SAUCERSWAP:: **SaucerSwap** positions:
 - 🥩 Infinity Pool positions: Use 🥩💰📈 for user's xSAUCE balance, claimable SAUCE, and rewards
 - 📊 Infinity Pool market stats: Use 🥩📊💰 for GLOBAL SAUCE/xSAUCE ratio, market totals, and APY
 - 📋 SaucerSwap dashboard: Show user's LP farming + Infinity Pool positions (complete view)
+- 🎯 Limit orders: Use 🎯💰📈⏰ for order creation, trigger prices, and execution status
 - ::SAUCERSWAP:: Protocol separation: NEVER mix Bonzo lending data with SaucerSwap farming data
 - 💱 Swap quotes: Present input/output amounts with 💱🔄💰 and include exchange rates clearly
 
@@ -442,6 +490,26 @@ When user asks "What can you do" or about capabilities, ALWAYS respond using thi
 - List features with "• **Feature**: Description" format
 - End with "# Analytics & Insights:" section
 
+**EXAMPLE CAPABILITIES STRUCTURE:**
+# Operations:
+
+## ::HEDERA:: Hedera Network:
+• **Token Creation**: Create fungible and non-fungible tokens
+• **Account Management**: Transfer HBAR, query balances, manage accounts
+• **Consensus**: Create topics and submit messages
+
+## ::BONZO:: Bonzo Finance:
+• **Lending Analytics**: Real-time market data, account positions
+• **HBAR Deposits**: Earn interest on HBAR deposits
+
+## ::SAUCERSWAP:: SaucerSwap:
+• **DEX Trading**: Token swaps, liquidity provision, farming
+• **Infinity Pool**: SAUCE staking to earn xSAUCE rewards
+
+## ::AUTOSWAPLIMIT:: AutoSwapLimit:
+• **Limit Orders**: Create automated buy orders at specific prices
+• **Order Management**: Track order status and execution
+
 **EXAMPLE DASHBOARD FORMAT:**
 \`\`\`
 # 📋 Your DeFi Dashboard
@@ -459,8 +527,14 @@ When user asks "What can you do" or about capabilities, ALWAYS respond using thi
 • **Infinity Pool**: 2.5 xSAUCE → 3.02 SAUCE claimable
 • **Market APY**: 5.36% | Ratio: 1.21 SAUCE/xSAUCE
 
+## ::AUTOSWAPLIMIT:: AutoSwapLimit (Limit Orders):
+• **Active Orders**: 1 pending buy order for SAUCE
+• **Trigger Price**: 0.001 HBAR/SAUCE
+• **Order Amount**: 0.5 HBAR
+
 # 🎯 Opportunities:
 • Consider LP farming for additional yield
+• Set up limit orders for better entry prices
 \`\`\`
 
 Remember: The user can see conversation history. Don't repeat what they already know unless they ask for updated/fresh data. Always use icons to make responses more engaging and easier to scan.
@@ -494,6 +568,13 @@ Current user account: ${userAccountId}`,],
     
     // Create Bonzo deposit step tool (for completing deposit after token association)
     const bonzoDepositStepLangchainTool = createBonzoDepositStepLangchainTool(
+      this.agentClient,
+      { mode: AgentMode.RETURN_BYTES, accountId: userAccountId },
+      userAccountId
+    );
+    
+    // Create Bonzo approve step tool (for approving ERC-20 tokens before deposit)
+    const bonzoApproveStepLangchainTool = createBonzoApproveStepLangchainTool(
       this.agentClient,
       { mode: AgentMode.RETURN_BYTES, accountId: userAccountId },
       userAccountId
@@ -533,8 +614,15 @@ Current user account: ${userAccountId}`,],
       userAccountId
     );
     
+    // Create AutoSwapLimit limit order tool
+    const autoswapLimitLangchainTool = createAutoSwapLimitLangchainTool(
+      this.agentClient,
+      { mode: AgentMode.RETURN_BYTES, accountId: userAccountId },
+      userAccountId
+    );
+    
     // Combine all tools
-    const tools = [...hederaToolsList, bonzoLangchainTool, bonzoDepositLangchainTool, bonzoDepositStepLangchainTool, saucerswapLangchainTool, saucerswapRouterSwapQuoteLangchainTool, saucerswapRouterSwapLangchainTool, saucerswapInfinityPoolLangchainTool, saucerswapInfinityPoolStepLangchainTool];
+    const tools = [...hederaToolsList, bonzoLangchainTool, bonzoDepositLangchainTool, bonzoDepositStepLangchainTool, bonzoApproveStepLangchainTool, saucerswapLangchainTool, saucerswapRouterSwapQuoteLangchainTool, saucerswapRouterSwapLangchainTool, saucerswapInfinityPoolLangchainTool, saucerswapInfinityPoolStepLangchainTool, autoswapLimitLangchainTool];
 
     // Create agent
     const agent = createToolCallingAgent({
@@ -759,7 +847,16 @@ Current user account: ${userAccountId}`,],
         // Store pending step information for multi-step flows
         if (nextStep) {
           console.log(`📝 Storing pending step: ${nextStep.step} for ${nextStep.tool}`);
+          console.log(`📝 Storing pending step details:`, {
+            tool: nextStep.tool,
+            operation: nextStep.operation,
+            step: nextStep.step,
+            originalParams: nextStep.originalParams,
+            nextStepInstructions: nextStep.nextStepInstructions
+          });
           currentConnection.pendingStep = nextStep;
+        } else {
+          console.log('📝 No next step detected from agent response');
         }
         
         // Send agent response
@@ -814,7 +911,15 @@ Current user account: ${userAccountId}`,],
       // Check if there's a pending next step to execute
       if (userConnection?.pendingStep) {
         console.log('🔄 Executing next step automatically:', userConnection.pendingStep.step);
+        console.log('🔄 Pending step details before execution:', {
+          tool: userConnection.pendingStep.tool,
+          operation: userConnection.pendingStep.operation,
+          step: userConnection.pendingStep.step,
+          originalParams: userConnection.pendingStep.originalParams
+        });
         await this.executeNextStep(ws, userConnection);
+      } else {
+        console.log('🔄 No pending step to execute after transaction confirmation');
       }
     } else {
       console.log('❌ Transaction failed:', message.error);
@@ -891,7 +996,7 @@ Current user account: ${userAccountId}`,],
             timestamp: Date.now(),
             quote: {
               operation: obsObj.operation,
-              network: obsObj.network || 'mainnet',
+              network: obsObj.network || (process.env.HEDERA_NETWORK as 'mainnet' | 'testnet') || 'mainnet',
               input: {
                 token: inputToken,
                 tokenId: obsObj.quote.input.token,
@@ -924,13 +1029,37 @@ Current user account: ${userAccountId}`,],
     const tokenMap: { [key: string]: string } = {
       'HBAR': 'HBAR',
       '0.0.731861': 'SAUCE', // Mainnet SAUCE
-      '0.0.456858': 'SAUCE', // Testnet SAUCE
+      '0.0.1183558': 'SAUCE', // Testnet SAUCE (corrected)
       '0.0.1456986': 'WHBAR', // Mainnet WHBAR
-      '0.0.15057': 'WHBAR', // Testnet WHBAR
+      '0.0.15058': 'WHBAR', // Testnet WHBAR (corrected)
       // Add more token mappings as needed
     };
     
     return tokenMap[tokenId] || tokenId;
+  }
+
+  /**
+   * Convert token name to correct token ID based on current network
+   */
+  private getTokenIdForNetwork(tokenName: string): string {
+    const network = (process.env.HEDERA_NETWORK as 'mainnet' | 'testnet') || 'mainnet';
+    
+    const tokenMappings = {
+      mainnet: {
+        'SAUCE': '0.0.731861',
+        'WHBAR': '0.0.1456986',
+        'HBAR': 'HBAR'
+      },
+      testnet: {
+        'SAUCE': '0.0.1183558',
+        'WHBAR': '0.0.15058', 
+        'HBAR': 'HBAR'
+      }
+    } as const;
+
+    const normalizedName = tokenName.toUpperCase();
+    const networkTokens = tokenMappings[network] as { [key: string]: string };
+    return networkTokens[normalizedName] || tokenName;
   }
 
   private extractNextStepFromAgentResponse(response: any): PendingStep | undefined {
@@ -943,17 +1072,29 @@ Current user account: ${userAccountId}`,],
       try {
         const obsObj = typeof obs === 'string' ? JSON.parse(obs) : obs;
         
+        console.log('🔍 EXTRACTING NEXT STEP - RAW OBSERVATION:');
+        console.log('   obsObj.nextStep:', obsObj.nextStep);
+        console.log('   obsObj.step:', obsObj.step);
+        console.log('   obsObj.operation:', obsObj.operation);
+        console.log('   obsObj.originalParams:', obsObj.originalParams);
+        
         // Check if this is a Bonzo deposit flow with next step (CHECK FIRST - MORE SPECIFIC)
         if (obsObj.nextStep && obsObj.step && obsObj.operation && 
             (obsObj.operation.includes('bonzo') || 
              obsObj.operation.includes('whbar') || 
              obsObj.operation === 'associate_whbar' ||
+             obsObj.operation === 'associate_token' ||
+             obsObj.operation === 'approve_token' ||
              obsObj.operation.includes('deposit') || 
-             obsObj.step === 'deposit')) {
+             obsObj.step === 'deposit' ||
+             obsObj.step === 'token_approval' ||
+             obsObj.nextStep === 'approval' ||
+             obsObj.nextStep === 'deposit')) {
           console.log('🎯 DETECTED BONZO NEXT STEP:');
           console.log(`   Step: ${obsObj.step}`);
           console.log(`   Operation: ${obsObj.operation}`);
           console.log(`   NextStep: ${obsObj.nextStep}`);
+          console.log(`   OriginalParams:`, obsObj.originalParams);
           return {
             tool: obsObj.toolInfo?.name || 'bonzo_deposit_tool',
             operation: obsObj.operation,
@@ -1007,15 +1148,30 @@ Current user account: ${userAccountId}`,],
 
     const pendingStep = userConnection.pendingStep;
     console.log(`🚀 Executing next step: ${pendingStep.step} for ${pendingStep.tool}`);
+    console.log(`🔍 Pending step details:`, {
+      tool: pendingStep.tool,
+      operation: pendingStep.operation,
+      step: pendingStep.step,
+      originalParams: pendingStep.originalParams,
+      nextStepInstructions: pendingStep.nextStepInstructions
+    });
 
     try {
       // Create the message for the next step based on the tool and operation
       let nextStepMessage = '';
       
-      if (pendingStep.tool === 'bonzo_deposit_tool' && pendingStep.step === 'deposit') {
-        // For Bonzo deposit flow, trigger the deposit step only
+      if (pendingStep.tool === 'bonzo_deposit_tool' && pendingStep.step === 'approval') {
+        // For Bonzo deposit flow, trigger the approval step after token association
         const params = pendingStep.originalParams;
-        nextStepMessage = `Use bonzo_deposit_step_tool to deposit ${params.hbarAmount} HBAR for account ${userConnection.userAccountId} with referral code ${params.referralCode || 0}`;
+        const token = params.token || 'hbar';
+        const amount = params.amount || params.hbarAmount || 0;
+        nextStepMessage = `Use bonzo_approve_step_tool to approve ${amount} ${token.toUpperCase()} for Bonzo Finance LendingPool with token "${token}", amount ${amount}, userAccountId "${userConnection.userAccountId}"`;
+      } else if (pendingStep.tool === 'bonzo_deposit_tool' && pendingStep.step === 'deposit') {
+        // For Bonzo deposit flow, trigger the deposit step only (after approval or for HBAR)
+        const params = pendingStep.originalParams;
+        const token = params.token || 'hbar';
+        const amount = params.amount || params.hbarAmount || 0; // Support both new and old format
+        nextStepMessage = `Use bonzo_deposit_step_tool to deposit ${amount} ${token.toUpperCase()} for account ${userConnection.userAccountId} with token "${token}", amount ${amount}, and referral code ${params.referralCode || 0}`;
       } else if (pendingStep.tool === 'saucerswap_infinity_pool_tool' && pendingStep.step === 'approval') {
         // For Infinity Pool flow, trigger the approval step after token association
         const params = pendingStep.originalParams;

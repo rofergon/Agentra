@@ -13,6 +13,9 @@ export * from './Saucer-Swap';
 // Export SaucerSwap Infinity Pool staking tools
 export * from './SaucerSwap-InfinityPool';
 
+// Export AutoSwapLimit limit order tools
+export * from './autoswap-limit';
+
 // Future DeFi protocol exports:
 // export * from './uniswap';
 // export * from './pangolin'; 

@@ -46,7 +46,7 @@ export const createSaucerswapRouterSwapQuoteLangchainTool = (
 - Fee values in hundredths of a bip: 500=0.05%, 3000=0.30%, 10000=1.00%
 
 **💡 USAGE EXAMPLES:**
-- HBAR to SAUCE: tokenPath: ["HBAR", "0.0.731861"], fees: [3000]
+- HBAR to SAUCE: tokenPath: ["HBAR", "0.0.731861"] (mainnet) or ["HBAR", "0.0.1183558"] (testnet), fees: [3000]
 - Token to Token: tokenPath: ["0.0.111111", "0.0.222222"], fees: [3000]
 - Multi-hop: tokenPath: ["HBAR", "0.0.111111", "0.0.222222"], fees: [500, 3000]
 
@@ -86,6 +86,15 @@ Current user: ${userAccountId}`,
     
     func: async (params: any) => {
       try {
+        // Ensure network follows HEDERA_NETWORK from .env if not explicitly provided
+        if (!params.network || params.network === 'mainnet') {
+          const envNetwork = (process.env.HEDERA_NETWORK as 'mainnet' | 'testnet') || 'mainnet';
+          if (envNetwork === 'testnet') {
+            params.network = 'testnet';
+            console.log(`🌐 Overriding network to testnet based on HEDERA_NETWORK=${process.env.HEDERA_NETWORK}`);
+          }
+        }
+
         console.log(`🎯 SaucerSwap Router Quote Request:`, {
           operation: params.operation,
           amount: params.amount,

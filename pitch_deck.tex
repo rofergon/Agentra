@@ -1,0 +1,606 @@
+\documentclass[aspectratio=169]{beamer}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usepackage{fontawesome5}
+% Fallback icon definitions for missing icons in fontawesome5 package
+\providecommand{\faMissed}{\faTimesCircle}
+\providecommand{\faExchangeAlt}{\faSync}
+\providecommand{\faExpandArrowsAlt}{\ensuremath{\leftrightarrow}}
+\providecommand{\faShieldAlt}{\faLock}
+\providecommand{\faUserCog}{\faUser}
+\providecommand{\faUsersCog}{\faUsers}
+\providecommand{\faNetworkWired}{\faCogs}
+\providecommand{\faLayerGroup}{\faCogs}
+\providecommand{\faSearchDollar}{\faDollarSign}
+\providecommand{\faCheckDouble}{\faCheck}
+\providecommand{\faExchange}{\faSync}
+\providecommand{\faShield}{\faLock}
+\usepackage{xcolor}
+\usepackage{lmodern}
+\usepackage[T1]{fontenc}
+\usepackage{shadowtext}
+
+% Define elegant color palette
+\definecolor{primary}{RGB}{47, 79, 79}      % Dark slate gray
+\definecolor{secondary}{RGB}{70, 130, 180}   % Steel blue  
+\definecolor{accent}{RGB}{95, 158, 160}      % Cadet blue
+\definecolor{light}{RGB}{245, 248, 250}     % Light gray-blue
+\definecolor{text}{RGB}{44, 62, 80}         % Dark blue-gray
+\definecolor{success}{RGB}{39, 174, 96}     % Elegant green
+
+% Modern minimalist theme
+\usetheme{default}
+\useinnertheme{rounded}
+\useoutertheme{infolines}
+
+% Remove navigation symbols
+\setbeamertemplate{navigation symbols}{}
+
+% Color configuration
+\setbeamercolor{palette primary}{bg=primary,fg=white}
+\setbeamercolor{palette secondary}{bg=secondary,fg=white}
+\setbeamercolor{frametitle}{bg=primary,fg=white}
+\setbeamercolor{title}{bg=primary,fg=white}
+\setbeamercolor{structure}{fg=secondary}
+\setbeamercolor{normal text}{fg=text}
+\setbeamercolor{block title}{bg=secondary,fg=white}
+\setbeamercolor{block body}{bg=light,fg=text}
+\setbeamercolor{item}{fg=accent}
+
+% Font configuration - Smaller sizes
+\setbeamerfont{title}{size=\small,series=\bfseries}
+\setbeamerfont{frametitle}{size=\small,series=\bfseries}
+\setbeamerfont{block title}{size=\footnotesize,series=\bfseries}
+
+% Better spacing configuration - Minimal spacing
+\setlength{\parskip}{0em}
+\setbeamertemplate{itemize/enumerate body begin}{\tiny}
+\setbeamertemplate{itemize/enumerate subbody begin}{\tiny}
+
+% Block spacing - Minimal
+\addtobeamertemplate{block begin}{}{\vspace{0em}}
+\addtobeamertemplate{block end}{\vspace{0em}}{}
+
+% Increase margins further to prevent overfull hbox
+\setbeamersize{text margin left=0.9cm,text margin right=0.9cm}
+
+\title{Hedron DeFi AI Agent}
+\subtitle{Reinventing DeFi navigation \\ on Hedera Hashgraph}
+\author{Sebastian Diaz \& Ashutosh Kumar}
+\institute{Hello Future Hackathon}
+\date{\today}
+
+\begin{document}
+
+% Title slide
+\begin{frame}
+\titlepage
+\end{frame}
+
+% Table of contents
+\begin{frame}{Agenda}
+\tableofcontents
+\end{frame}
+
+\section{Team Introduction}
+
+\begin{frame}{Meet Our Team}
+\vspace{0.05cm}
+\begin{columns}[c]
+\column{0.43\textwidth}
+\begin{center}
+\begin{tikzpicture}
+\node[circle, fill=secondary, text=white, minimum size=0.6cm] at (0,0) {\small \faUser};
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.05cm}
+
+\begin{block}{Ashutosh Kumar}
+\centering
+\vspace{0.05cm}
+\textbf{\normalsize \color{secondary}Developer Relations} \\
+\vspace{0.05cm}
+\textsc{\normalsize India} \\
+\vspace{0.05cm}
+\begin{itemize}
+\setlength\itemsep{0em}
+\setlength\leftmargin{1em}
+\item Community Building
+\item Developer Advocacy  
+\item Technical Docs
+\end{itemize}
+\vspace{0.05cm}
+\end{block}
+
+\column{0.14\textwidth}
+% Spacer column
+
+\column{0.43\textwidth}
+\begin{center}
+\begin{tikzpicture}
+\node[circle, fill=accent, text=white, minimum size=0.6cm] at (0,0) {\small \faCode};
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.05cm}
+
+\begin{block}{Sebastian Diaz}
+\centering
+\vspace{0.05cm}
+\textbf{\normalsize \color{accent}Lead Developer} \\
+\vspace{0.05cm}
+\textsc{\normalsize Colombia} \\
+\vspace{0.05cm}
+\begin{itemize}
+\setlength\itemsep{0em}
+\setlength\leftmargin{1em}
+\item Full-Stack Development
+\item AI/ML Integration
+\item Smart Contracts
+\end{itemize}
+\vspace{0.05cm}
+\end{block}
+\end{columns}
+
+\vspace{0.05cm}
+\begin{center}
+\begin{tikzpicture}[scale=0.6]
+\node[rectangle, rounded corners, fill=light, text=text, minimum width=7cm, minimum height=0.6cm] at (0,0) {
+\footnotesize \textbf{Expertise:} Blockchain, AI, DeFi \& Communities
+};
+\end{tikzpicture}
+\end{center}
+\end{frame}
+
+\section{Project Overview}
+
+\begin{frame}{The Problem We're Solving}
+\vspace{0.05cm}
+\begin{columns}[c]
+\column{0.43\textwidth}
+\begin{center}
+\begin{tikzpicture}
+\node[circle, fill=secondary, text=white, minimum size=0.8cm] at (0,0) {\normalsize \faUserGraduate};
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.05cm}
+
+\begin{block}{Novice Users Challenges}
+\vspace{0.05cm}
+\begin{itemize}
+\setlength\itemsep{-0.1em}
+\setlength\leftmargin{1em}
+\item[\color{accent}\faExclamationTriangle] \textbf{Complex ecosystem} to navigate
+\item[\color{accent}\faQuestion] \textbf{Technical knowledge} barriers
+\item[\color{accent}\faExclamation] \textbf{Risk of losses} from inexperience  
+\item[\color{accent}\faPuzzlePiece] \textbf{Fragmented information} sources
+\end{itemize}
+\vspace{0.05cm}
+\end{block}
+
+\column{0.14\textwidth}
+% Spacer column
+
+\column{0.43\textwidth}
+\begin{center}
+\begin{tikzpicture}
+\node[circle, fill=accent, text=white, minimum size=0.6cm] at (0,0) {\small \faUserTie};
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.05cm}
+
+\begin{block}{Expert Users Pain Points}
+\vspace{0.05cm}
+\begin{itemize}
+\setlength\itemsep{-0.1em}
+\setlength\leftmargin{1em}
+\item[\color{secondary}\faClock] \textbf{Time-consuming} manual monitoring
+\item[\color{secondary}\faMissed] \textbf{Missed opportunities} in fast markets
+\item[\color{secondary}\faChartBar] \textbf{Complex analysis} across protocols
+\item[\color{secondary}\faRobot] \textbf{Lack of automation} tools
+\end{itemize}
+\vspace{0.05cm}
+\end{block}
+\end{columns}
+
+\vspace{0.05cm}
+\begin{center}
+\begin{tikzpicture}
+\node[rectangle, rounded corners, fill=primary, text=white, minimum width=7cm, minimum height=0.6cm] at (0,0) {
+\footnotesize \textbf{Result:} Users struggle with DeFi navigation \& yield optimization
+};
+\end{tikzpicture}
+\end{center}
+\end{frame}
+
+\begin{frame}{Our Solution: Hedera DeFi AI Agent}
+\vspace{0.05cm}
+\begin{center}
+\begin{tikzpicture}
+\node[circle, fill=success, text=white, minimum size=1.2cm] at (0,0) {\small \faRobot};
+\node[below=0.2cm] at (0,-0.8) {\footnotesize \textbf{\color{primary}AI-Powered DeFi Navigator}};
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.05cm}
+
+\begin{columns}[c]
+\column{0.28\textwidth}
+\begin{center}
+\begin{tikzpicture}
+\node[circle, fill=secondary, text=white, minimum size=0.8cm] at (0,0) {\normalsize \faComments};
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.05cm}
+
+\begin{block}{Conversational AI}
+\vspace{0.05cm}
+\begin{itemize}
+\setlength\itemsep{-0.1em}
+\setlength\leftmargin{1em}
+\item[\color{accent}\faComment] Natural language queries
+\item[\color{accent}\faWifi] Real-time WebSocket connection
+\item[\color{accent}\faBrain] Persistent conversation memory
+\item[\color{accent}\faUserCog] Personalized recommendations
+\end{itemize}
+\vspace{0.05cm}
+\end{block}
+
+\column{0.28\textwidth}
+\begin{center}
+\begin{tikzpicture}
+\node[circle, fill=accent, text=white, minimum size=0.6cm] at (0,0) {\small \faChartLine};
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.05cm}
+
+\begin{block}{Multi-Protocol Coverage}
+\vspace{0.05cm}
+\begin{itemize}
+\setlength\itemsep{-0.1em}
+\setlength\leftmargin{1em}
+\item[\color{success}\faCheckCircle] SaucerSwap (44\% TVL)
+\item[\color{success}\faCheckCircle] Bonzo Finance (\$38M)
+\item[\color{success}\faCheckCircle] Stader Labs (47\% TVL)
+\item[\color{success}\faCheckCircle] HeliSwap, HLiquity, Sirio
+\end{itemize}
+\vspace{0.05cm}
+\end{block}
+
+\column{0.28\textwidth}
+\begin{center}
+\begin{tikzpicture}
+\node[circle, fill=primary, text=white, minimum size=0.6cm] at (0,0) {\small \faShieldAlt};
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.05cm}
+
+\begin{block}{Security \& Trust}
+\vspace{0.05cm}
+\begin{itemize}
+\setlength\itemsep{-0.1em}
+\setlength\leftmargin{1em}
+\item[\color{primary}\faLock] No fund custody
+\item[\color{primary}\faSignature] External transaction signing
+\item[\color{primary}\faChartPie] Analysis \& recommendations only
+\item[\color{primary}\faUserShield] User maintains full control
+\end{itemize}
+\vspace{0.05cm}
+\end{block}
+\end{columns}
+\end{frame}
+
+\section{Technical Innovation}
+
+\begin{frame}{Technical Architecture \& Innovation}
+\vspace{0.05cm}
+\begin{columns}
+\column{0.45\textwidth}
+\begin{block}{Real-Time Communication \hfill
+\begin{tikzpicture}[baseline]
+\node[circle, fill=secondary, text=white, minimum size=0.5cm] at (0,0) {\tiny \faWifi};
+\end{tikzpicture}}
+\begin{itemize}
+\item[\color{accent}\faPlug] WebSocket persistent connections
+\item[\color{accent}\faUsersCog] Multi-user session management
+\item[\color{accent}\faExchangeAlt] Transaction orchestration
+\item[\color{accent}\faNetworkWired] Scalable architecture
+\end{itemize}
+\end{block}
+
+\begin{block}{LangChain Integration \hfill
+\begin{tikzpicture}[baseline]
+\node[circle, fill=accent, text=white, minimum size=0.5cm] at (0,0) {\tiny \faCode};
+\end{tikzpicture}}
+\begin{itemize}
+\item[\color{secondary}\faCogs] Modular tool architecture
+\item[\color{secondary}\faShieldAlt] TypeScript \& Zod validation
+\item[\color{secondary}\faExclamationCircle] Comprehensive error handling
+\item[\color{secondary}\faExpandArrowsAlt] Extensible framework
+\end{itemize}
+\end{block}
+
+\column{0.45\textwidth}
+\begin{block}{Smart Data Management \hfill
+\begin{tikzpicture}[baseline]
+\node[circle, fill=primary, text=white, minimum size=0.5cm] at (0,0) {\tiny \faDatabase};
+\end{tikzpicture}}
+\begin{itemize}
+\item[\color{success}\faStopwatch] 30-second intelligent caching
+\item[\color{success}\faChartLine] Rate limiting optimization
+\item[\color{success}\faLayerGroup] Multiple API integrations
+\item[\color{success}\faLink] On-chain \& off-chain fusion
+\end{itemize}
+\end{block}
+
+\begin{block}{Hedera Native Features \hfill
+\begin{tikzpicture}[baseline]
+\node[circle, fill=success, text=white, minimum size=0.5cm] at (0,0) {\tiny \faHashtag};
+\end{tikzpicture}}
+\begin{itemize}
+\item[\color{primary}\faCoins] HTS token support
+\item[\color{primary}\faComments] HCS consensus service
+\item[\color{primary}\faSearchDollar] Account \& balance queries
+\item[\color{primary}\faSync] Native transaction support
+\end{itemize}
+\end{block}
+\end{columns}
+\end{frame}
+
+\section{Market Integration \& Success}
+
+\begin{frame}{Hedera DeFi Ecosystem Integration}
+\vspace{0.05cm}
+\begin{center}
+\begin{tikzpicture}[scale=0.65]
+% Central node - AI Agent
+\node[circle, fill=success, text=white, minimum size=2.2cm] (center) at (0,0) {\large \textbf{Hedron}};
+
+% Top protocols
+\node[rectangle, rounded corners=5pt, fill=secondary, text=white, minimum width=2.8cm, minimum height=0.8cm] (heli) at (-4.5,2.5) {\textbf{HeliSwap}};
+\node[rectangle, rounded corners=5pt, fill=secondary, text=white, minimum width=2.8cm, minimum height=0.8cm] (saucer) at (4.5,2.5) {\textbf{SaucerSwap}};
+
+% Middle protocols
+\node[rectangle, rounded corners=5pt, fill=accent, text=white, minimum width=2.8cm, minimum height=0.8cm] (hliq) at (-4.5,0) {\textbf{HLiquity}};
+\node[rectangle, rounded corners=5pt, fill=accent, text=white, minimum width=2.8cm, minimum height=0.8cm] (bonzo) at (4.5,0) {\textbf{Bonzo Finance}};
+
+% Bottom protocols
+\node[rectangle, rounded corners=5pt, fill=primary, text=white, minimum width=2.8cm, minimum height=0.8cm] (sirio) at (-4.5,-2.5) {\textbf{Sirio Finance}};
+\node[rectangle, rounded corners=5pt, fill=primary, text=white, minimum width=2.8cm, minimum height=0.8cm] (stader) at (4.5,-2.5) {\textbf{Stader Labs}};
+
+% Connections from center to protocols with curved arrows for better visibility
+\draw[->, thick, color=secondary] (center.west) to[out=150, in=0] (heli.east);
+\draw[->, thick, color=secondary] (center.east) to[out=30, in=180] (saucer.west);
+\draw[->, thick, color=accent] (center.west) to[out=180, in=0] (hliq.east);
+\draw[->, thick, color=accent] (center.east) to[out=0, in=180] (bonzo.west);
+\draw[->, thick, color=primary] (center.west) to[out=210, in=0] (sirio.east);
+\draw[->, thick, color=primary] (center.east) to[out=330, in=180] (stader.west);
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.2cm}
+\begin{center}
+\begin{tikzpicture}
+\node[rectangle, rounded corners=5pt, fill=success, text=white, minimum width=8cm, minimum height=0.8cm] at (0,0) {
+\small \textbf{Coverage: ~90\% of Hedera DeFi Ecosystem by TVL}
+};
+\end{tikzpicture}
+\end{center}
+\end{frame}
+
+\begin{frame}{Success Metrics \& Validation}
+\begin{columns}
+\column{0.47\textwidth}
+\begin{block}{\faCheckCircle\ Technical Success}
+\begin{itemize}
+\item \textbf{6 major DeFi protocols} integrated
+\item \textbf{Real-time data} from REST APIs \& smart contracts
+\item \textbf{WebSocket architecture} for instant responses
+\item \textbf{Modular design} for easy expansion
+\end{itemize}
+\end{block}
+
+\column{0.47\textwidth}
+\begin{block}{\faUsers\ Market Validation}
+\begin{itemize}
+\item \textbf{Addresses real pain points} in DeFi navigation
+\item \textbf{Covers 90\%+ of Hedera DeFi} by TVL
+\item \textbf{Serves both novice \& expert} users
+\item \textbf{First conversational AI} for Hedera DeFi
+\end{itemize}
+\end{block}
+\end{columns}
+
+\vspace{0.05cm}
+\begin{center}
+\footnotesize \textbf{Result:} Production-ready solution with immediate market impact
+\end{center}
+\end{frame}
+
+\section{Future Roadmap}
+
+\begin{frame}{Future Development Roadmap}
+\begin{columns}
+\column{0.47\textwidth}
+\begin{block}{\faRocket\ Phase 1 (Q2 2026)}
+\begin{itemize}
+\item Smart alerts \& notifications
+\item Additional protocol integrations
+\item Advanced analytics dashboard
+\item Mobile-responsive web interface
+\end{itemize}
+\end{block}
+
+\begin{block}{\faRobot\ Phase 2 (Q3 2026)}
+\begin{itemize}
+\item Automated strategy execution
+\item ML-powered predictive analysis
+\item Portfolio optimization algorithms
+\item Advanced risk assessment
+\end{itemize}
+\end{block}
+
+\column{0.47\textwidth}
+\begin{block}{\faGlobe\ Phase 3 (Q4 2026)}
+\begin{itemize}
+\item Multi-chain expansion
+\item Professional trader tools
+\item API for third-party integrations
+\item Enterprise solutions
+\end{itemize}
+\end{block}
+
+\begin{block}{\faHeart\ Community Impact}
+\begin{itemize}
+\item \textbf{Democratize DeFi access} for all users
+\item \textbf{Increase Hedera adoption} through easier UX
+\item \textbf{Educational content} for DeFi literacy
+\item \textbf{Open-source contributions} back to community
+\end{itemize}
+\end{block}
+\end{columns}
+\end{frame}
+
+\section{Demo \& Live Showcase}
+
+\begin{frame}{Live Demo Showcase}
+\begin{center}
+\large \faPlay\ \textbf{Live Demo}
+\end{center}
+
+\vspace{0.05cm}
+
+\begin{columns}
+\column{0.47\textwidth}
+\begin{block}{\faDesktop\ What You'll See}
+\begin{itemize}
+\item Real-time WebSocket connection
+\item Natural language queries
+\item Multi-protocol yield analysis
+\item Personalized recommendations
+\item Transaction preparation
+\end{itemize}
+\end{block}
+
+\column{0.47\textwidth}
+\begin{block}{\faCode\ Technical Highlights}
+\begin{itemize}
+\item Sub-second response times
+\item Comprehensive error handling
+\item Secure transaction flow
+\item Persistent conversation context
+\item Real-time market data
+\end{itemize}
+\end{block}
+\end{columns}
+
+\vspace{0.05cm}
+\begin{center}
+\footnotesize \textbf{YouTube Demo Link:} \texttt{[To be inserted]}
+\end{center}
+\end{frame}
+
+\section{Conclusion}
+
+\begin{frame}{Why Hedera DeFi AI Agent Wins}
+\begin{columns}
+\column{0.47\textwidth}
+\begin{block}{\faLightbulb\ Innovation}
+\begin{itemize}
+\item First conversational AI for Hedera DeFi
+\item WebSocket real-time architecture
+\item Multi-protocol unified interface
+\end{itemize}
+\end{block}
+
+\begin{block}{\faCogs\ Feasibility}
+\begin{itemize}
+\item Production-ready codebase
+\item Proven technology stack
+\item Scalable architecture
+\end{itemize}
+\end{block}
+
+\begin{block}{\faRocket\ Execution}
+\begin{itemize}
+\item 6 protocols integrated
+\item Full WebSocket implementation
+\item Comprehensive documentation
+\end{itemize}
+\end{block}
+
+\column{0.47\textwidth}
+\begin{block}{\faPlug\ Integration}
+\begin{itemize}
+\item Native Hedera features (HTS, HCS)
+\item 90\%+ DeFi ecosystem coverage
+\item Smart contract interactions
+\end{itemize}
+\end{block}
+
+\begin{block}{\faTrophy\ Success}
+\begin{itemize}
+\item Solves real market problems
+\item Immediate user value
+\item Measurable impact potential
+\end{itemize}
+\end{block}
+
+\begin{block}{\faCheckDouble\ Validation}
+\begin{itemize}
+\item Real protocol integrations
+\item Market-tested approach
+\item User research validated
+\end{itemize}
+\end{block}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Thank You!}
+\begin{center}
+\large \faHeart\ \textbf{Thank You!}
+
+\vspace{0.2cm}
+
+\small \textbf{Questions \& Discussion}
+
+\vspace{0.3cm}
+
+\begin{columns}
+\hspace{2.5cm}
+\column{0.38\textwidth}
+\textbf{\footnotesize Sebastian Diaz}\\
+\vspace{0.05cm}
+\footnotesize Lead Developer\\
+\vspace{0.05cm}
+\footnotesize \faEnvelope\ sebas.2023@gmail.com\\
+\footnotesize \faGithub\ @rofergon
+
+\column{0.38\textwidth}
+\textbf{\footnotesize Ashutosh Kumar}\\
+\vspace{0.05cm}
+\footnotesize Developer Relations\\
+\vspace{0.05cm}
+\footnotesize \faEnvelope\ ashutosh666be@gmail.com
+\\
+\footnotesize \faGithub\ @itskumar666
+\end{columns}
+
+\vspace{0.3cm}
+
+\textbf{\footnotesize GitHub:} \hspace{0.2cm} \texttt{\footnotesize github.com/rofergon/Hedron}
+
+\vspace{0.1cm}
+
+\textbf{\footnotesize Demo:} \texttt{\footnotesize [YouTube link to be inserted]}
+\end{center}
+\end{frame}
+
+\end{document}
