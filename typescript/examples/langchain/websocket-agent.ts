@@ -21,6 +21,8 @@ import { createSaucerswapRouterSwapQuoteLangchainTool } from '../../src/shared/t
 import { createSaucerSwapRouterSwapLangchainTool } from '../../src/shared/tools/defi/Saucer-Swap/langchain-tools';
 // Import SaucerSwap Infinity Pool staking tools
 import { createSaucerswapInfinityPoolLangchainTool, createSaucerswapInfinityPoolStepLangchainTool } from '../../src/shared/tools/defi/SaucerSwap-InfinityPool/langchain-tools';
+// Import AutoSwapLimit limit order tools
+import { createAutoSwapLimitLangchainTool } from '../../src/shared/tools/defi/autoswap-limit/langchain-tools';
 
 // WebSocket message types
 interface BaseMessage {
@@ -204,6 +206,7 @@ class HederaWebSocketAgent {
 - ::BONZO:: DeFi Transactions with Bonzo Finance (HBAR deposits to earn interest)
 - ::SAUCERSWAP:: DeFi Analytics with SaucerSwap (real-time DEX data, trading stats, farm yields)
 - 🥩 DeFi Staking with SaucerSwap Infinity Pool (SAUCE staking to earn xSAUCE rewards)
+- 🎯 DeFi Limit Orders with AutoSwapLimit (automated token swaps at specific prices)
 
 **RESPONSE FORMATTING - USE ICONS CONSISTENTLY:**
 - 💡 Use icons to make responses more visual and intuitive
@@ -340,6 +343,18 @@ When user requests ANY swap operation, ALWAYS follow this exact sequence:
 - Example: "trade HBAR to SAUCE" → ALWAYS show quote first, then wait for confirmation
 - ⚠️ NEVER execute swap directly without showing quote first
 
+**🎯 CRITICAL LIMIT ORDER DETECTION - MANDATORY:**
+When user requests limit orders, use AutoSwapLimit (NOT immediate swaps):
+- **Keywords that trigger LIMIT ORDER**: "buy [TOKEN] at [PRICE]", "buy [TOKEN] when price reaches [PRICE]", "set limit", "program order", "order at"
+- **Examples that should use AutoSwapLimit**:
+  - "buy SAUCE at 0.040 USDC" → Use autoswap_limit_tool with create_swap_order
+  - "buy SAUCE when price drops to 0.001 HBAR" → Use autoswap_limit_tool with create_swap_order
+  - "set up a limit order for SAUCE at 0.05 HBAR" → Use autoswap_limit_tool with create_swap_order
+- **Examples that should use immediate swap**:
+  - "swap 100 HBAR for SAUCE" → Use saucerswap_router_swap_quote_tool (immediate)
+  - "buy SAUCE now" → Use saucerswap_router_swap_quote_tool (immediate)
+- ⚠️ NEVER use immediate swap tools when user mentions a specific price point
+
 **::SAUCERSWAP:: SaucerSwap Router (Token Swaps):**
 - Use for: executing real token swaps ONLY after quote confirmation
 - Keywords for EXECUTION: "execute swap", "confirm swap", "proceed with swap", "yes proceed", "confirm trade"
@@ -364,9 +379,36 @@ When user requests ANY swap operation, ALWAYS follow this exact sequence:
 - MotherShip contract (0.0.1460199) handles SAUCE → xSAUCE conversions
 - Icons: 🥩 💰 📈 🎯 ⏳
 
+**::AUTOSWAPLIMIT:: AutoSwapLimit (Limit Orders):**
+- Use for: creating automated limit orders to swap HBAR for tokens at specific prices
+- Keywords: "limit order", "buy order", "automated swap", "price trigger", "when price drops", "when price reaches", "at price", "buy at", "order at", "set limit", "program order"
+- **CRITICAL DETECTION**: When user says "buy [TOKEN] at [PRICE]" or "buy [TOKEN] when price reaches [PRICE]" → Use AutoSwapLimit
+- **CRITICAL DETECTION**: When user mentions a specific price point for buying → Use AutoSwapLimit
+- **CRITICAL DETECTION**: When user wants to "set up" or "program" an order → Use AutoSwapLimit
+- Operations: create_swap_order, get_order_details, get_contract_config, get_router_info, get_contract_balance, get_next_order_id
+- **CRITICAL**: For limit order creation, use "create_swap_order" operation
+- **REQUIRED PARAMETERS**: tokenOut (e.g., "SAUCE"), amountIn (HBAR amount), minAmountOut (wei), triggerPrice (wei)
+- **PRICE CONVERSION**: When user mentions price in USDC, convert to HBAR equivalent for triggerPrice
+- **PRICE CONVERSION**: When user mentions price in USD, convert to HBAR equivalent for triggerPrice
+- **PRICE CONVERSION**: When user mentions price in HBAR, use directly for triggerPrice
+- **PARAMETER CALCULATION**: 
+  - tokenOut: Extract token name from user request (e.g., "SAUCE")
+  - amountIn: Use reasonable HBAR amount (e.g., 0.5 HBAR) if not specified
+  - minAmountOut: Use "1" (minimum amount) if not specified
+  - triggerPrice: Convert user's price to wei format
+- Order executes automatically when market price reaches trigger price
+- Uses SaucerSwap liquidity pools for execution
+- Minimum order amount: 0.1 HBAR
+- Default expiration: 24 hours (configurable 1-168 hours)
+- Icons: 🎯 💰 📈 ⏰ 🔄
+
 **OPERATION RULES:**
 - For SAUCE staking: Use ONLY saucerswap_infinity_pool_tool with "full_stake_flow"
 - For token swaps: ALWAYS show quote first, then wait for confirmation before executing
+- **CRITICAL**: For limit orders: Use autoswap_limit_tool with "create_swap_order" operation
+- **CRITICAL**: When user says "buy [TOKEN] at [PRICE]" → Use AutoSwapLimit (NOT immediate swap)
+- **CRITICAL**: When user mentions specific price for buying → Use AutoSwapLimit (NOT immediate swap)
+- **CRITICAL**: When user wants to "set up" or "program" an order → Use AutoSwapLimit
 - Multi-step flows handle all steps automatically
 - BE CONCISE - avoid repeating information already shared
 - Choose the right protocol based on keywords automatically
@@ -374,7 +416,9 @@ When user requests ANY swap operation, ALWAYS follow this exact sequence:
 **🎯 PROTOCOL SEPARATION - CRITICAL:**
 - **::BONZO:: Bonzo Finance**: HBAR lending/borrowing protocol (collateral, debt, LTV, health factor)
 - **::SAUCERSWAP:: SaucerSwap DEX**: Token swaps, LP farming, and SAUCE staking (completely separate from Bonzo)
+- **::AUTOSWAPLIMIT:: AutoSwapLimit**: Automated limit orders for token swaps at specific prices
 - ⚠️ NEVER mix Bonzo lending positions with SaucerSwap farming/staking data
+- ⚠️ NEVER mix limit orders with immediate swaps - they serve different purposes
 
 **🎯 SAUCERSWAP POSITION QUERIES:**
 When user asks about ::SAUCERSWAP:: **SaucerSwap** positions:
@@ -404,6 +448,7 @@ When user asks about ::SAUCERSWAP:: **SaucerSwap** positions:
 - 🥩 Infinity Pool positions: Use 🥩💰📈 for user's xSAUCE balance, claimable SAUCE, and rewards
 - 📊 Infinity Pool market stats: Use 🥩📊💰 for GLOBAL SAUCE/xSAUCE ratio, market totals, and APY
 - 📋 SaucerSwap dashboard: Show user's LP farming + Infinity Pool positions (complete view)
+- 🎯 Limit orders: Use 🎯💰📈⏰ for order creation, trigger prices, and execution status
 - ::SAUCERSWAP:: Protocol separation: NEVER mix Bonzo lending data with SaucerSwap farming data
 - 💱 Swap quotes: Present input/output amounts with 💱🔄💰 and include exchange rates clearly
 
@@ -445,6 +490,26 @@ When user asks "What can you do" or about capabilities, ALWAYS respond using thi
 - List features with "• **Feature**: Description" format
 - End with "# Analytics & Insights:" section
 
+**EXAMPLE CAPABILITIES STRUCTURE:**
+# Operations:
+
+## ::HEDERA:: Hedera Network:
+• **Token Creation**: Create fungible and non-fungible tokens
+• **Account Management**: Transfer HBAR, query balances, manage accounts
+• **Consensus**: Create topics and submit messages
+
+## ::BONZO:: Bonzo Finance:
+• **Lending Analytics**: Real-time market data, account positions
+• **HBAR Deposits**: Earn interest on HBAR deposits
+
+## ::SAUCERSWAP:: SaucerSwap:
+• **DEX Trading**: Token swaps, liquidity provision, farming
+• **Infinity Pool**: SAUCE staking to earn xSAUCE rewards
+
+## ::AUTOSWAPLIMIT:: AutoSwapLimit:
+• **Limit Orders**: Create automated buy orders at specific prices
+• **Order Management**: Track order status and execution
+
 **EXAMPLE DASHBOARD FORMAT:**
 \`\`\`
 # 📋 Your DeFi Dashboard
@@ -462,8 +527,14 @@ When user asks "What can you do" or about capabilities, ALWAYS respond using thi
 • **Infinity Pool**: 2.5 xSAUCE → 3.02 SAUCE claimable
 • **Market APY**: 5.36% | Ratio: 1.21 SAUCE/xSAUCE
 
+## ::AUTOSWAPLIMIT:: AutoSwapLimit (Limit Orders):
+• **Active Orders**: 1 pending buy order for SAUCE
+• **Trigger Price**: 0.001 HBAR/SAUCE
+• **Order Amount**: 0.5 HBAR
+
 # 🎯 Opportunities:
 • Consider LP farming for additional yield
+• Set up limit orders for better entry prices
 \`\`\`
 
 Remember: The user can see conversation history. Don't repeat what they already know unless they ask for updated/fresh data. Always use icons to make responses more engaging and easier to scan.
@@ -543,8 +614,15 @@ Current user account: ${userAccountId}`,],
       userAccountId
     );
     
+    // Create AutoSwapLimit limit order tool
+    const autoswapLimitLangchainTool = createAutoSwapLimitLangchainTool(
+      this.agentClient,
+      { mode: AgentMode.RETURN_BYTES, accountId: userAccountId },
+      userAccountId
+    );
+    
     // Combine all tools
-    const tools = [...hederaToolsList, bonzoLangchainTool, bonzoDepositLangchainTool, bonzoDepositStepLangchainTool, bonzoApproveStepLangchainTool, saucerswapLangchainTool, saucerswapRouterSwapQuoteLangchainTool, saucerswapRouterSwapLangchainTool, saucerswapInfinityPoolLangchainTool, saucerswapInfinityPoolStepLangchainTool];
+    const tools = [...hederaToolsList, bonzoLangchainTool, bonzoDepositLangchainTool, bonzoDepositStepLangchainTool, bonzoApproveStepLangchainTool, saucerswapLangchainTool, saucerswapRouterSwapQuoteLangchainTool, saucerswapRouterSwapLangchainTool, saucerswapInfinityPoolLangchainTool, saucerswapInfinityPoolStepLangchainTool, autoswapLimitLangchainTool];
 
     // Create agent
     const agent = createToolCallingAgent({
