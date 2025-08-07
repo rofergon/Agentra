@@ -38,6 +38,7 @@ import { infinityPoolTool, SAUCERSWAP_INFINITY_POOL_TOOL } from './tools/defi/Sa
 import { infinityPoolStepTool, SAUCERSWAP_INFINITY_POOL_STEP_TOOL } from './tools/defi/SaucerSwap-InfinityPool';
 // Import AutoSwapLimit tools
 import { autoswapLimitTool, AUTOSWAP_LIMIT_TOOL } from './tools/defi/autoswap-limit';
+import { autoswapLimitOrdersQueryTool, AUTOSWAP_LIMIT_ORDERS_QUERY_TOOL } from './tools/defi/autoswap-limit-queries';
 
 export type Tool = {
   method: string;
@@ -66,6 +67,7 @@ const tools = (context: Context): Tool[] => [
   infinityPoolTool(context),
   infinityPoolStepTool(context),
   autoswapLimitTool(context),
+  autoswapLimitOrdersQueryTool(context),
 ];
 
 export const hederaTools = {
@@ -87,6 +89,7 @@ export const hederaTools = {
   SAUCERSWAP_INFINITY_POOL_TOOL,
   SAUCERSWAP_INFINITY_POOL_STEP_TOOL,
   AUTOSWAP_LIMIT_TOOL,
+  AUTOSWAP_LIMIT_ORDERS_QUERY_TOOL,
 };
 
 export default tools;

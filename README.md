@@ -2,7 +2,7 @@
 
 ## 📋 Project Description
 
-An artificial intelligence agent specialized in the Hedera Hashgraph DeFi ecosystem that helps both novice and experienced users navigate and optimize their investments in decentralized finance protocols. The agent uses real-time analysis of multiple DeFi platforms to identify the best yield opportunities.
+An artificial intelligence agent specialized in the Hedera Hashgraph DeFi ecosystem that helps both novice and experienced users navigate and optimize their investments through integrated SaucerSwap DEX operations, Bonzo Finance lending protocols, and advanced AutoSwapLimit trading strategies. The agent provides real-time analysis and automated execution capabilities.
 
 
 
@@ -23,7 +23,7 @@ An artificial intelligence agent specialized in the Hedera Hashgraph DeFi ecosys
 ## 💡 How It Solves the Problem
 
 ### 🤖 Intelligent AI Agent
-- **Automated analysis**: Continuous monitoring of multiple DeFi protocols on Hedera
+- **Automated analysis**: Continuous monitoring of SaucerSwap, Bonzo Finance, and AutoSwapLimit
 - **Personalized recommendations**: Suggestions based on the user's risk profile and objectives
 - **Conversational interface**: Natural interaction via WebSocket for real-time queries
 - **Persistent context**: Conversation memory that maintains session context
@@ -36,54 +36,34 @@ An artificial intelligence agent specialized in the Hedera Hashgraph DeFi ecosys
 - **Intelligent rate limiting**: Optimized request management to avoid limitations
 - **Smart cache**: 30-second cache system to optimize performance
 
-### 🏦 Supported DeFi Platforms
+### 🏦 Integrated DeFi Platforms
 
 #### 🥇 SaucerSwap
 - **Type**: DEX with AMM (Automated Market Maker)
-- **Yield Features**: 
-  - Token swaps
-  - Liquidity provision
-  - Yield farming
-  - Single-sided staking (Infinity Pools, Community Pools)
-  - Rewards in SAUCE tokens
+- **Features**: 
+  - Token swap quotes and execution
+  - Real-time price discovery
+  - Single-sided staking (Infinity Pools)
+  - Liquidity analysis
+  - Advanced trading with AutoSwapLimit orders
 - **Dominance**: +44% of total Hedera DeFi TVL and +60% of unique active wallets
-
-#### 🔄 HeliSwap
-- **Type**: Native Hedera DEX (Uniswap v2 style)
-- **Yield Features**:
-  - LP token staking
-  - Liquidity mining rewards in HELI and HBAR
-  - Support for HTS, ERC-20, wrapped HBAR
-- **Growth**: TVL increased ~355% quarterly up to Q4 2024 (~$6.6M)
-
-#### 🏛️ Stader Labs
-- **Type**: Liquid staking provider for HBAR
-- **Yield Features**:
-  - Stake HBAR → receive HBARX (rebasing token)
-  - Maintains liquidity while earning staking rewards
-  - 10% fee on rewards
-  - Unstaking requires ~1 day
-- **TVL**: ~47% of total Hedera DeFi TVL by end of 2024
 
 #### 💰 Bonzo Finance
 - **Type**: Lending & borrowing protocol (Aave V2 fork)
-- **Yield Features**:
+- **Features**:
   - Supply assets to earn interest
-  - Loans enabled after TVL threshold
+  - Real-time lending rates monitoring
+  - Portfolio analysis and optimization
+  - Risk assessment tools
 - **TVL**: Steady growth post-launch (~$25M in Q4 2024, later ~$38M)
 
-#### 🧠 Sirio Finance
-- **Type**: Lending & borrowing protocol with AI integration
-- **Yield Features**:
-  - Similar to Bonzo but at a smaller scale
-  - First AI-powered protocol on Hedera
-- **Current TVL**: ~$28.8K (emerging protocol)
-
-#### 🏦 HLiquity
-- **Type**: Interest-free lending protocol using HBAR as collateral
-- **Yield Features**:
-  - HCHF loans (stablecoin pegged to Swiss franc)
-  - HLQT tokens via staking in Stability Pool
+#### 🎯 AutoSwapLimit (SaucerSwap Integration)
+- **Type**: Advanced limit order system
+- **Features**:
+  - Automated limit orders execution
+  - Price monitoring and alerts
+  - Order management and cancellation
+  - Strategic trading automation
 
 ## 🛠️ Technical Architecture
 
@@ -108,14 +88,14 @@ An artificial intelligence agent specialized in the Hedera Hashgraph DeFi ecosys
 ## 🎯 Use Cases
 
 ### For Novice Users:
-- "What are the best staking options on Hedera?"
-- "Explain what yield farming is and where I can do it"
-- "Which protocol is safest to start with?"
+- "What are the best yield opportunities on SaucerSwap?"
+- "How does lending work on Bonzo Finance?"
+- "What are limit orders and how can I use them?"
 
 ### For Experienced Users:
-- "Show me the highest APYs available now"
-- "Compare arbitrage opportunities between SaucerSwap and HeliSwap"
-- "What is the best strategy for $10,000 with high risk tolerance?"
+- "Show me the best APYs between SaucerSwap and Bonzo Finance"
+- "Set up automated limit orders for my trading strategy"
+- "Analyze my current positions across SaucerSwap and Bonzo"
 
 ## 🚀 Key Benefits
 
@@ -127,11 +107,12 @@ An artificial intelligence agent specialized in the Hedera Hashgraph DeFi ecosys
 
 ## 🔜 Future Roadmap
 
-- **Integration of more protocols**: Expansion to new DeFi protocols on Hedera
-- **Smart alerts**: Automatic notifications about yield opportunities
-- **Automated strategies**: Automatic execution of pre-configured strategies
+- **Enhanced SaucerSwap features**: Advanced liquidity pool analytics and farming optimization
+- **Expanded Bonzo Finance tools**: Liquidation monitoring and advanced lending strategies  
+- **AutoSwapLimit improvements**: More sophisticated order types and execution algorithms
+- **Smart alerts**: Automatic notifications about yield opportunities and price targets
 - **Web dashboard**: Graphical interface complementing the conversational agent
-- **Predictive analysis**: ML to predict market trends and opportunities
+- **Integration of additional protocols**: HeliSwap, Stader Labs, and other emerging Hedera DeFi protocols
 
 
 ## 🚀 Quick Start

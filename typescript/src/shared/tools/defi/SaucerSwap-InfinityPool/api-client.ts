@@ -146,6 +146,10 @@ export const infinityPoolStakeParameters = (context: Context = {}) => {
     transactionMemo: z.string().optional().describe(
       'Optional memo for the transactions'
     ),
+    
+    originalParams: z.any().optional().describe(
+      'Original parameters from the initial flow request (used internally for multi-step flows)'
+    ),
   });
  };
 

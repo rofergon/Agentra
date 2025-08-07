@@ -110,7 +110,40 @@ export class AgentResponseUtils {
         console.log('   obsObj.operation:', obsObj.operation);
         console.log('   obsObj.originalParams:', obsObj.originalParams);
         
-        // Check if this is a Bonzo deposit flow with next step (CHECK FIRST - MORE SPECIFIC)
+        // Check if this is a SaucerSwap Infinity Pool flow with next step (CHECK FIRST - MOST SPECIFIC)
+        if (obsObj.nextStep && (
+          obsObj.toolType === 'infinity_pool' ||
+          obsObj.protocol === 'saucerswap' ||
+          (obsObj.step === 'token_association' && obsObj.operation === 'associate_tokens' && obsObj.originalParams?.operation === 'full_stake_flow') ||
+          (obsObj.step === 'token_association' && obsObj.operation?.includes('sauce')) || 
+          obsObj.step === 'token_approval' || 
+          obsObj.step === 'stake' || 
+          obsObj.operation?.includes('infinity_pool') || 
+          obsObj.operation?.includes('sauce') ||
+          obsObj.operation?.includes('associate_tokens') ||
+          obsObj.operation?.includes('approve_sauce') ||
+          obsObj.operation?.includes('stake_sauce') ||
+          (obsObj.operation && (obsObj.operation === 'associate_tokens' || obsObj.operation === 'approve_sauce' || obsObj.operation === 'stake_sauce')) ||
+          (obsObj.originalParams?.operation === 'full_stake_flow') ||
+          (obsObj.originalParams?.sauceAmount !== undefined)
+        )) {
+          console.log('🎯 DETECTED INFINITY POOL NEXT STEP:');
+          console.log(`   Tool Type: ${obsObj.toolType}`);
+          console.log(`   Protocol: ${obsObj.protocol}`);
+          console.log(`   Step: ${obsObj.step}`);
+          console.log(`   Operation: ${obsObj.operation}`);
+          console.log(`   NextStep: ${obsObj.nextStep}`);
+          console.log('🎯 =====================================');
+          return {
+            tool: obsObj.toolInfo?.name || 'saucerswap_infinity_pool_tool',
+            operation: obsObj.operation || 'infinity_pool_operation',
+            step: obsObj.nextStep,
+            originalParams: obsObj.originalParams || {},
+            nextStepInstructions: obsObj.instructions || obsObj.message
+          };
+        }
+        
+        // Check if this is a Bonzo deposit flow with next step (CHECK SECOND - LESS SPECIFIC)
         if (obsObj.nextStep && obsObj.step && obsObj.operation && 
             (obsObj.operation.includes('bonzo') || 
              obsObj.operation.includes('whbar') || 
@@ -136,35 +169,6 @@ export class AgentResponseUtils {
           };
         }
         
-        // Check if this is a SaucerSwap Infinity Pool flow with next step (SECOND - MORE SPECIFIC)
-        if (obsObj.nextStep && (
-          obsObj.toolType === 'infinity_pool' ||
-          obsObj.protocol === 'saucerswap' ||
-          (obsObj.step === 'token_association' && obsObj.operation?.includes('sauce')) || 
-          obsObj.step === 'token_approval' || 
-          obsObj.step === 'stake' || 
-          obsObj.operation?.includes('infinity_pool') || 
-          obsObj.operation?.includes('sauce') ||
-          obsObj.operation?.includes('associate_tokens') ||
-          obsObj.operation?.includes('approve_sauce') ||
-          obsObj.operation?.includes('stake_sauce') ||
-          (obsObj.operation && (obsObj.operation === 'associate_tokens' || obsObj.operation === 'approve_sauce' || obsObj.operation === 'stake_sauce'))
-        )) {
-          console.log('🎯 DETECTED INFINITY POOL NEXT STEP:');
-          console.log(`   Tool Type: ${obsObj.toolType}`);
-          console.log(`   Protocol: ${obsObj.protocol}`);
-          console.log(`   Step: ${obsObj.step}`);
-          console.log(`   Operation: ${obsObj.operation}`);
-          console.log(`   NextStep: ${obsObj.nextStep}`);
-          console.log('🎯 =====================================');
-          return {
-            tool: obsObj.toolInfo?.name || 'saucerswap_infinity_pool_tool',
-            operation: obsObj.operation || 'infinity_pool_operation',
-            step: obsObj.nextStep,
-            originalParams: obsObj.originalParams || {},
-            nextStepInstructions: obsObj.instructions || obsObj.message
-          };
-        }
       } catch (e) {
         console.error('Error parsing next step:', e);
       }

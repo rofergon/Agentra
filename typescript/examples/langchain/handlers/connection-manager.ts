@@ -22,6 +22,15 @@ import {
   createSaucerswapInfinityPoolStepLangchainTool 
 } from '../../../src/shared/tools/defi/SaucerSwap-InfinityPool/langchain-tools';
 import { createAutoSwapLimitLangchainTool } from '../../../src/shared/tools/defi/autoswap-limit/langchain-tools';
+import { createAutoSwapLimitOrdersQueryLangchainTool } from '../../../src/shared/tools/defi/autoswap-limit-queries/langchain-tools';
+
+/**
+ * Configuration options for memory management
+ */
+interface MemoryConfig {
+  maxTokenLimit?: number;
+  returnMaxTokens?: number;
+}
 
 /**
  * Manages user connections and their agent configurations
@@ -29,9 +38,14 @@ import { createAutoSwapLimitLangchainTool } from '../../../src/shared/tools/defi
 export class ConnectionManager {
   private userConnections: Map<WebSocket, UserConnection> = new Map();
   private network: 'mainnet' | 'testnet';
+  private memoryConfig: MemoryConfig;
 
-  constructor(network: 'mainnet' | 'testnet' = 'mainnet') {
+  constructor(network: 'mainnet' | 'testnet' = 'mainnet', memoryConfig: MemoryConfig = {}) {
     this.network = network;
+    this.memoryConfig = {
+      maxTokenLimit: memoryConfig.maxTokenLimit || 4000,
+      returnMaxTokens: memoryConfig.returnMaxTokens || 2000,
+    };
   }
 
   /**
@@ -97,25 +111,36 @@ export class ConnectionManager {
       prompt,
     });
 
-    // 🧠 Create FRESH memory instance for this connection (MVP: avoid memory leaks between sessions)
-    console.log(`🧠 Creating FRESH memory for user: ${userAccountId}`);
+    // 🧠 Create ENHANCED memory instance for this connection with token management
+    console.log(`🧠 Creating ENHANCED memory for user: ${userAccountId}`);
+    console.log(`   - Max Token Limit: ${this.memoryConfig.maxTokenLimit}`);
+    console.log(`   - Return Max Tokens: ${this.memoryConfig.returnMaxTokens}`);
+    
     const memory = new BufferMemory({
       memoryKey: 'chat_history',
       inputKey: 'input',
       outputKey: 'output',
       returnMessages: true,
+      // Enhanced memory configuration for better context management
+      aiPrefix: 'Assistant',
+      humanPrefix: 'Human',
+      // Optional: We could implement custom processing here later
     });
 
     // 🧹 Ensure memory is completely clean for new connections
     await memory.clear();
     console.log(`✅ Memory cleared for user: ${userAccountId}`);
 
-    // Executor del agente para este usuario
+    // Enhanced AgentExecutor configuration for this user
     const agentExecutor = new AgentExecutor({
       agent,
       tools,
       memory,
       returnIntermediateSteps: true,
+      // Enhanced execution configuration
+      maxIterations: 10, // Prevent infinite loops while allowing complex workflows
+      // Improved error handling
+      handleParsingErrors: true,
     });
 
     console.log(`✅ User connection created successfully for: ${userAccountId}`);
@@ -211,6 +236,7 @@ export class ConnectionManager {
       
       // AutoSwapLimit tools
       createAutoSwapLimitLangchainTool(agentClient, configuration, userAccountId),
+      createAutoSwapLimitOrdersQueryLangchainTool(agentClient, configuration, userAccountId),
     ];
   }
 
@@ -334,14 +360,15 @@ Use H1 (#) for main sections and H2 (##) for platforms with bullets for features
 - Available on mainnet and testnet
 - Always include platform name: ::SAUCERSWAP:: **SaucerSwap**
 
-**::SAUCERSWAP:: SaucerSwap Infinity Pool Analytics:**
-- Use for: Both individual positions AND global market statistics
-- Keywords: "my infinity pool", "my SAUCE staking", "infinity pool position", "xSAUCE balance", "staking rewards"
+**::SAUCERSWAP:: SaucerSwap Infinity Pool Analytics (READ-ONLY QUERIES):**
+- Use for: Both individual positions AND global market statistics (QUERIES ONLY, NOT STAKING)
+- **QUERY KEYWORDS**: "check", "balance", "rewards", "position", "my infinity pool", "my SAUCE staking", "infinity pool position", "xSAUCE balance", "staking rewards", "how much", "show me"
 - Operations: 
   - infinity_pool_position (user's actual staking position - xSAUCE balance + claimable SAUCE)
   - sss_stats (global market statistics only - total staked, ratio, APY)
 - Shows: xSAUCE balance, claimable SAUCE, current ratio, position value, market context
-- ✅ IMPORTANT: Use infinity_pool_position for individual user positions
+- ✅ CRITICAL: Use saucerswap_api_query tool with infinity_pool_position operation for ALL position queries
+- ⚠️ NEVER use saucerswap_infinity_pool_tool for balance/rewards queries - that's for actual staking transactions
 - Icons: 🥩 📊 📈 💰
 
 **::SAUCERSWAP:: SaucerSwap Router (Swap Quotes):**
@@ -388,11 +415,15 @@ When user requests limit orders, use AutoSwapLimit (NOT immediate swaps):
   - WHBAR testnet: 0.0.15058 | WHBAR mainnet: 0.0.1456986
 - Icons: 🔄 💱 💰 🚀 ⚡
 
-**::SAUCERSWAP:: SaucerSwap Infinity Pool (SAUCE Staking):**
-- Use for: staking SAUCE tokens to earn xSAUCE, unstaking xSAUCE for SAUCE + rewards
-- Keywords: "stake", "staking", "SAUCE staking", "xSAUCE", "Infinity Pool", "stake SAUCE", "unstake"
+**::SAUCERSWAP:: SaucerSwap Infinity Pool (ACTUAL STAKING TRANSACTIONS):**
+- Use for: ACTUAL staking/unstaking transactions ONLY (NOT for balance queries)
+- **STAKING KEYWORDS**: "stake", "deposit", "add", "put in", "invest", "stake SAUCE", "unstake", "withdraw", "remove"
+- **NEVER use for**: "check", "balance", "rewards", "position", "how much", "show me" - these are QUERIES, not transactions
 - Operations: associate_tokens, approve_sauce, stake_sauce, unstake_xsauce, full_stake_flow, full_unstake_flow
 - **CRITICAL**: For new staking requests, ALWAYS use "full_stake_flow" operation ONLY
+- **CRITICAL**: NEVER use this tool for balance/position queries - use saucerswap_api_query instead
+- **CRITICAL**: NEVER manually execute individual steps like "approve_sauce" or "stake_sauce" - only use "full_stake_flow"
+- **CRITICAL**: If user says "continue" during a staking flow, DO NOT call any tools - the next step executes automatically after transaction confirmation
 - **NEVER** execute multiple operations simultaneously - the flow handles steps automatically
 - Multi-step flow: Token association → SAUCE approval → Staking (earn xSAUCE)
 - Staking rewards from SaucerSwap trading fees automatically compound
@@ -401,13 +432,17 @@ When user requests limit orders, use AutoSwapLimit (NOT immediate swaps):
 - Icons: 🥩 💰 📈 🎯 ⏳
 
 **::AUTOSWAPLIMIT:: AutoSwapLimit (Limit Orders):**
-- Use for: creating automated limit orders to swap HBAR for tokens at specific prices
+- Use for: creating automated limit orders to swap HBAR for tokens at specific prices AND querying existing orders
 - Keywords: "limit order", "buy order", "automated swap", "price trigger", "when price drops", "when price reaches", "at price", "buy at", "order at", "set limit", "program order"
+- **QUERY KEYWORDS**: "my orders", "my limit orders", "check orders", "order status", "pending orders", "active orders", "show my orders"
 - **CRITICAL DETECTION**: When user says "buy [TOKEN] at [PRICE]" or "buy [TOKEN] when price reaches [PRICE]" → Use AutoSwapLimit
 - **CRITICAL DETECTION**: When user mentions a specific price point for buying → Use AutoSwapLimit
 - **CRITICAL DETECTION**: When user wants to "set up" or "program" an order → Use AutoSwapLimit
+- **QUERY DETECTION**: When user asks about "my orders", "order status", "pending orders" → Use AutoSwapLimitOrdersQuery
 - Operations: create_swap_order, get_order_details, get_contract_config, get_router_info, get_contract_balance, get_next_order_id
+- **ORDER QUERIES**: Use autoswap_limit_orders_query_tool for checking user's existing orders with get_user_orders_with_details operation
 - **CRITICAL**: For limit order creation, use "create_swap_order" operation
+- **CRITICAL**: For order queries, use autoswap_limit_orders_query_tool with "get_user_orders_with_details" operation
 - **REQUIRED PARAMETERS**: tokenOut (e.g., "SAUCE"), amountIn (HBAR amount), minAmountOut (wei), triggerPrice (wei)
 - **PRICE CONVERSION**: When user mentions price in USDC, convert to HBAR equivalent for triggerPrice
 - **PRICE CONVERSION**: When user mentions price in USD, convert to HBAR equivalent for triggerPrice
@@ -418,18 +453,27 @@ When user requests limit orders, use AutoSwapLimit (NOT immediate swaps):
   - minAmountOut: Use "1" (minimum amount) if not specified
   - triggerPrice: Convert user's price to wei format
 - Order executes automatically when market price reaches trigger price
+- **RESPONSE FORMATTING FOR LIMIT ORDERS**:
+  - 🚨 NEVER show "Minimum Amount Out" to users (internal field only)
+  - 🚨 ALWAYS show trigger price using "triggerPriceUSDC" field formatted as "$X.XX USDC"
+  - 🚨 Do NOT show raw trigger price in HBAR format
+  - Show format: Order ID, Token, Amount In (ℏ), Trigger Price ($X.XX USDC), Expiration, Status
 - Uses SaucerSwap liquidity pools for execution
 - Minimum order amount: 0.1 HBAR
 - Default expiration: 24 hours (configurable 1-168 hours)
 - Icons: 🎯 💰 📈 ⏰ 🔄
 
-**OPERATION RULES:**
-- For SAUCE staking: Use ONLY saucerswap_infinity_pool_tool with "full_stake_flow"
-- For token swaps: ALWAYS show quote first, then wait for confirmation before executing
-- **CRITICAL**: For limit orders: Use autoswap_limit_tool with "create_swap_order" operation
+**OPERATION RULES - CRITICAL TOOL SELECTION:**
+- **For SAUCE staking TRANSACTIONS**: Use ONLY saucerswap_infinity_pool_tool with "full_stake_flow"
+- **For Infinity Pool POSITION QUERIES**: Use ONLY saucerswap_api_query with "infinity_pool_position" operation
+- **For token swaps**: ALWAYS show quote first, then wait for confirmation before executing
+- **CRITICAL**: For limit order creation: Use autoswap_limit_tool with "create_swap_order" operation
+- **CRITICAL**: For limit order queries: Use autoswap_limit_orders_query_tool with "get_user_orders_with_details" operation
 - **CRITICAL**: When user says "buy [TOKEN] at [PRICE]" → Use AutoSwapLimit (NOT immediate swap)
+- **CRITICAL**: When user asks "my orders", "order status", "pending orders" → Use AutoSwapLimitOrdersQuery
 - **CRITICAL**: When user mentions specific price for buying → Use AutoSwapLimit (NOT immediate swap)
 - **CRITICAL**: When user wants to "set up" or "program" an order → Use AutoSwapLimit
+- **🚨 INFINITY POOL RULE**: "check", "balance", "rewards", "position" = saucerswap_api_query | "stake", "deposit", "invest" = saucerswap_infinity_pool_tool
 - Multi-step flows handle all steps automatically
 - BE CONCISE - avoid repeating information already shared
 - Choose the right protocol based on keywords automatically
@@ -441,18 +485,19 @@ When user requests limit orders, use AutoSwapLimit (NOT immediate swaps):
 - ⚠️ NEVER mix Bonzo lending positions with SaucerSwap farming/staking data
 - ⚠️ NEVER mix limit orders with immediate swaps - they serve different purposes
 
-**🎯 SAUCERSWAP POSITION QUERIES:**
+**🎯 SAUCERSWAP POSITION QUERIES (CRITICAL TOOL SELECTION):**
 When user asks about ::SAUCERSWAP:: **SaucerSwap** positions:
-1. **For LP Farming positions**: Use account_farms operation (user's LP tokens in farms)
-2. **For Infinity Pool positions**: Use infinity_pool_position operation (user's xSAUCE balance + claimable SAUCE)
-3. **For Infinity Pool market data**: Use sss_stats operation (global market stats only)
-4. **For SaucerSwap dashboard**: Query account_farms + infinity_pool_position for complete view
-5. **Keywords mapping**:
-   - "my farms", "LP farming", "farming positions" to account_farms
-   - "my infinity pool", "my SAUCE staking", "xSAUCE balance", "staking rewards" to infinity_pool_position
-   - "infinity pool market", "SSS market stats", "staking market" to sss_stats
-   - "saucerswap dashboard", "my saucerswap positions" to account_farms + infinity_pool_position
-6. **Response format**: Always use ::SAUCERSWAP:: **SaucerSwap** in headers
+1. **For LP Farming positions**: Use saucerswap_api_query with account_farms operation
+2. **For Infinity Pool positions**: Use saucerswap_api_query with infinity_pool_position operation
+3. **For Infinity Pool market data**: Use saucerswap_api_query with sss_stats operation
+4. **For SaucerSwap dashboard**: Use saucerswap_api_query to query account_farms + infinity_pool_position
+5. **Keywords mapping to saucerswap_api_query tool**:
+   - "my farms", "LP farming", "farming positions" → account_farms operation
+   - "my infinity pool", "my SAUCE staking", "xSAUCE balance", "staking rewards", "check balance", "show rewards" → infinity_pool_position operation
+   - "infinity pool market", "SSS market stats", "staking market" → sss_stats operation
+   - "saucerswap dashboard", "my saucerswap positions" → account_farms + infinity_pool_position operations
+6. **🚨 CRITICAL**: ALL position queries use saucerswap_api_query tool, NEVER saucerswap_infinity_pool_tool
+7. **Response format**: Always use ::SAUCERSWAP:: **SaucerSwap** in headers
 
 **✅ INFINITY POOL POSITIONS:**
 - infinity_pool_position shows user's ACTUAL staking position (xSAUCE balance + claimable SAUCE)
@@ -470,6 +515,7 @@ When user asks about ::SAUCERSWAP:: **SaucerSwap** positions:
 - 📊 Infinity Pool market stats: Use 🥩📊💰 for GLOBAL SAUCE/xSAUCE ratio, market totals, and APY
 - 📋 SaucerSwap dashboard: Show user's LP farming + Infinity Pool positions (complete view)
 - 🎯 Limit orders: Use 🎯💰📈⏰ for order creation, trigger prices, and execution status
+- 🎯 When showing limit orders: Use triggerPriceUSDC as "$X.XX USDC", hide minAmountOut field
 - ::SAUCERSWAP:: Protocol separation: NEVER mix Bonzo lending data with SaucerSwap farming data
 - 💱 Swap quotes: Present input/output amounts with 💱🔄💰 and include exchange rates clearly
 
@@ -530,6 +576,7 @@ When user asks "What can you do" or about capabilities, ALWAYS respond using thi
 ## ::AUTOSWAPLIMIT:: AutoSwapLimit:
 • **Limit Orders**: Create automated buy orders at specific prices
 • **Order Management**: Track order status and execution
+• **Order Queries**: Check user's existing orders, status, and details
 
 **EXAMPLE DASHBOARD FORMAT:**
 \`\`\`

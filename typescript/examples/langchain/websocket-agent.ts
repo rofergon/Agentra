@@ -13,8 +13,17 @@ import { MessageHandlers } from './handlers/message-handlers';
 import { ConnectionManager } from './handlers/connection-manager';
 
 // Constants
-const NETWORK = (process.env.HEDERA_NETWORK as 'mainnet' | 'testnet') || 'mainnet';
+const NETWORK = (process.env.HEDERA_NETWORK as 'mainnet' | 'testnet') || 'testnet';
 const FORCE_CLEAR_MEMORY = process.env.FORCE_CLEAR_MEMORY === 'true';
+
+// Enhanced LLM Configuration Constants
+const MAX_TOKENS = parseInt(process.env.LLM_MAX_TOKENS || '12000');
+const TEMPERATURE = parseFloat(process.env.LLM_TEMPERATURE || '0.7');
+const MODEL_NAME = process.env.LLM_MODEL || 'gpt-4o-mini';
+
+// Memory Configuration Constants
+const MEMORY_MAX_TOKEN_LIMIT = parseInt(process.env.MEMORY_MAX_TOKEN_LIMIT || '8000');
+const MEMORY_RETURN_MAX_TOKENS = parseInt(process.env.MEMORY_RETURN_MAX_TOKENS || '4000');
 
 class HederaWebSocketAgent {
   private wss: WebSocketServer;
@@ -51,17 +60,39 @@ class HederaWebSocketAgent {
     console.log('🚀 Initializing Hedera WebSocket Agent...');
     console.log(`🧠 MVP Memory Debug Mode: ${FORCE_CLEAR_MEMORY ? 'ENABLED' : 'DISABLED'}`);
     console.log(`📊 Memory will be cleared ${FORCE_CLEAR_MEMORY ? 'on every message' : 'only on new connections'}`);
+    
+    // Log enhanced configuration
+    console.log(`🤖 LLM Configuration:`);
+    console.log(`   - Model: ${MODEL_NAME}`);
+    console.log(`   - Max Tokens: ${MAX_TOKENS}`);
+    console.log(`   - Temperature: ${TEMPERATURE}`);
+    console.log(`🧠 Memory Configuration:`);
+    console.log(`   - Max Token Limit: ${MEMORY_MAX_TOKEN_LIMIT}`);
+    console.log(`   - Return Max Tokens: ${MEMORY_RETURN_MAX_TOKENS}`);
 
-    // Configuración OpenAI
+    // Enhanced OpenAI Configuration with increased context
     this.llm = new ChatOpenAI({
-      model: 'gpt-4o-mini',
+      model: MODEL_NAME,
+      temperature: TEMPERATURE,
+      maxTokens: MAX_TOKENS,
+      streaming: false, // Disable streaming for better token management
+      // Increase context window and optimize for longer conversations
+      modelKwargs: {
+        // Additional model parameters for better context handling
+        top_p: 0.9,
+        frequency_penalty: 0.1,
+        presence_penalty: 0.1,
+      },
     });
 
     // Hedera client for testnet (without operator, will be configured by user)
     this.agentClient = Client.forTestnet();
 
-    // Initialize modular components
-    this.connectionManager = new ConnectionManager(NETWORK);
+    // Initialize modular components with enhanced memory configuration
+    this.connectionManager = new ConnectionManager(NETWORK, {
+      maxTokenLimit: MEMORY_MAX_TOKEN_LIMIT,
+      returnMaxTokens: MEMORY_RETURN_MAX_TOKENS,
+    });
     this.messageHandlers = new MessageHandlers(
       this.connectionManager,
       this.llm,
@@ -149,12 +180,20 @@ class HederaWebSocketAgent {
 🌐 HTTP Health Check: http://localhost:${port}/health
 🔌 WebSocket Server: ws://localhost:${port}
 
-🧠 MVP Memory Configuration:
+🤖 Enhanced LLM Configuration:
+   - Model: ${MODEL_NAME}
+   - Max Tokens: ${MAX_TOKENS}
+   - Temperature: ${TEMPERATURE}
+
+🧠 Enhanced Memory Configuration:
    - Fresh memory per connection: ✅ ENABLED
    - Auto cleanup on disconnect: ✅ ENABLED
    - Force clear on each message: ${FORCE_CLEAR_MEMORY ? '✅ ENABLED' : '❌ DISABLED'}
+   - Max Token Limit: ${MEMORY_MAX_TOKEN_LIMIT}
+   - Return Max Tokens: ${MEMORY_RETURN_MAX_TOKENS}
    
 📝 To enable debug mode: Set environment variable FORCE_CLEAR_MEMORY=true
+📝 To customize token limits: Set LLM_MAX_TOKENS and MEMORY_MAX_TOKEN_LIMIT
 
 📝 Supported message types:
    - CONNECTION_AUTH: Authenticate with account ID

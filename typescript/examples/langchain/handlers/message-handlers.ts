@@ -237,11 +237,11 @@ export class MessageHandlers {
       } else if (pendingStep.tool === 'saucerswap_infinity_pool_tool' && pendingStep.step === 'approval') {
         // For Infinity Pool flow, trigger the approval step after token association
         const params = pendingStep.originalParams;
-        nextStepMessage = `Execute SAUCE approval for staking: Use saucerswap_infinity_pool_tool with operation "approve_sauce", sauceAmount ${params.sauceAmount}, userAccountId "${userConnection.userAccountId}"`;
+        nextStepMessage = `Execute SAUCE approval for staking: Use saucerswap_infinity_pool_tool with operation "approve_sauce", sauceAmount ${params.sauceAmount || 100}, userAccountId "${userConnection.userAccountId}", originalParams as provided in the flow context`;
       } else if (pendingStep.tool === 'saucerswap_infinity_pool_tool' && pendingStep.step === 'stake') {
         // For Infinity Pool flow, trigger the staking step after approval
         const params = pendingStep.originalParams;
-        nextStepMessage = `Use saucerswap_infinity_pool_step_tool to stake ${params.sauceAmount} SAUCE for account ${userConnection.userAccountId}`;
+        nextStepMessage = `Use saucerswap_infinity_pool_step_tool to stake ${params.sauceAmount} SAUCE for account ${userConnection.userAccountId} with originalParams ${JSON.stringify(params)}`;
       } else {
         // Generic next step execution
         nextStepMessage = `Execute ${pendingStep.step} step for ${pendingStep.tool}`;
