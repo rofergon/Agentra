@@ -1,15 +1,15 @@
 # 💱 Structured Swap Quotes WebSocket Integration
 
-Este documento explica cómo integrar las nuevas respuestas estructuradas de swap quotes en el frontend.
+This document explains how to integrate the new structured swap quote responses in the frontend.
 
-## 🎯 Nuevo Tipo de Mensaje: `SWAP_QUOTE`
+## 🎯 New Message Type: `SWAP_QUOTE`
 
-Cuando el usuario solicita un quote de swap (por ejemplo: "quote swap 10 HBAR to SAUCE"), el WebSocket agent ahora envía **dos mensajes**:
+When the user requests a swap quote (for example: "quote swap 10 HBAR to SAUCE"), the WebSocket agent now sends **two messages**:
 
-1. **`SWAP_QUOTE`** - Datos estructurados para el componente de trading
-2. **`AGENT_RESPONSE`** - Respuesta formateada tradicional (opcional para mostrar)
+1. **`SWAP_QUOTE`** - Structured data for the trading component
+2. **`AGENT_RESPONSE`** - Traditional formatted response (optional for display)
 
-## 📊 Estructura del Mensaje `SWAP_QUOTE`
+## 📊 Structure of the `SWAP_QUOTE` Message
 
 ```typescript
 interface SwapQuote extends BaseMessage {
@@ -18,10 +18,10 @@ interface SwapQuote extends BaseMessage {
     operation: 'get_amounts_out' | 'get_amounts_in';
     network: 'mainnet' | 'testnet';
     input: {
-      token: string;        // Nombre legible (ej: "HBAR", "SAUCE")
-      tokenId: string;      // ID de Hedera (ej: "0.0.731861")
-      amount: string;       // Cantidad en wei/tinybars
-      formatted: string;    // Cantidad formateada legible
+      token: string;        // Readable name (e.g., "HBAR", "SAUCE")
+      tokenId: string;      // Hedera ID (e.g., "0.0.731861")
+      amount: string;       // Amount in wei/tinybars
+      formatted: string;    // Formatted readable amount
     };
     output: {
       token: string;
@@ -29,21 +29,21 @@ interface SwapQuote extends BaseMessage {
       amount: string;
       formatted: string;
     };
-    path: string[];         // Ruta de tokens para el swap
-    fees: number[];         // Fees en hundredths of bip (3000 = 0.30%)
-    exchangeRate: string;   // Tasa de cambio
-    gasEstimate?: string;   // Estimación de gas (opcional)
+    path: string[];         // Token path for the swap
+    fees: number[];         // Fees in hundredths of bip (3000 = 0.30%)
+    exchangeRate: string;   // Exchange rate
+    gasEstimate?: string;   // Gas estimate (optional)
   };
-  originalMessage: string;  // Mensaje original formateado
+  originalMessage: string;  // Formatted original message
 }
 ```
 
-## 🎨 Ejemplo de Implementación Frontend
+## 🎨 Frontend Implementation Example
 
 ### React/TypeScript
 
 ```typescript
-// Tipos de mensajes WebSocket
+// WebSocket message types
 type WSMessage = 
   | AgentResponse 
   | SwapQuote 
@@ -51,38 +51,38 @@ type WSMessage =
   | SystemMessage
   | ConnectionAuth;
 
-// Componente para manejar mensajes
+// Component to handle messages
 const WebSocketHandler = () => {
   const [swapQuotes, setSwapQuotes] = useState<SwapQuote[]>([]);
   
   const handleMessage = useCallback((message: WSMessage) => {
     switch (message.type) {
       case 'SWAP_QUOTE':
-        // 🎯 Mostrar en componente de trading especializado
+        // 🎯 Display in specialized trading component
         setSwapQuotes(prev => [...prev, message]);
         break;
         
       case 'AGENT_RESPONSE':
-        // Respuesta normal del agente
+        // Normal agent response
         setMessages(prev => [...prev, message]);
         break;
         
-      // ... otros casos
+      // ... other cases
     }
   }, []);
 
   return (
     <div>
-      {/* Componente especializado para quotes */}
+      {/* Specialized component for quotes */}
       <SwapQuoteCard quotes={swapQuotes} />
       
-      {/* Chat normal */}
+      {/* Normal chat */}
       <ChatMessages messages={messages} />
     </div>
   );
 };
 
-// Componente especializado para mostrar quotes
+// Specialized component to display quotes
 const SwapQuoteCard = ({ quotes }: { quotes: SwapQuote[] }) => {
   const latestQuote = quotes[quotes.length - 1];
   
@@ -144,14 +144,14 @@ const SwapQuoteCard = ({ quotes }: { quotes: SwapQuote[] }) => {
 ```vue
 <template>
   <div class="trading-interface">
-    <!-- Componente especializado para quotes -->
+    <!-- Specialized component for quotes -->
     <SwapQuoteCard 
       v-if="latestSwapQuote" 
       :quote="latestSwapQuote" 
       @execute="handleExecuteSwap"
     />
     
-    <!-- Chat normal -->
+    <!-- Normal chat -->
     <ChatMessages :messages="messages" />
   </div>
 </template>
@@ -178,34 +178,34 @@ const handleWebSocketMessage = (message: WSMessage) => {
 };
 
 const handleExecuteSwap = (quote: SwapQuote) => {
-  // Enviar mensaje para ejecutar el swap
+  // Send message to execute the swap
   const swapMessage = `Execute swap: ${quote.quote.input.formatted} ${quote.quote.input.token} to ${quote.quote.output.token}`;
   sendMessage(swapMessage);
 };
 </script>
 ```
 
-## 🚀 Beneficios
+## 🚀 Benefits
 
-### ✅ Para el Frontend:
-- **Componentes especializados**: Crear UI específica para trading
-- **Datos estructurados**: Fácil acceso a todos los campos necesarios
-- **UX mejorada**: Mostrar quotes en formato card/modal atractivo
-- **Integración directa**: Botones "Execute Swap" con datos ya parseados
+### ✅ For Frontend:
+- **Specialized components**: Create specific UI for trading
+- **Structured data**: Easy access to all necessary fields
+- **Improved UX**: Display quotes in attractive card/modal format
+- **Direct integration**: "Execute Swap" buttons with already parsed data
 
-### ✅ Para el Usuario:
-- **Visualización clara**: Componente dedicado para quotes
-- **Información completa**: Fees, rates, gas estimates visibles
-- **Acción rápida**: Botón directo para ejecutar el swap
-- **Historial**: Mantener quotes anteriores si es necesario
+### ✅ For User:
+- **Clear visualization**: Dedicated component for quotes
+- **Complete information**: Fees, rates, gas estimates visible
+- **Quick action**: Direct button to execute the swap
+- **History**: Keep previous quotes if necessary
 
-## 🎨 Sugerencias de UI
+## 🎨 UI Suggestions
 
-1. **Card Layout**: Mostrar quote en una tarjeta destacada
-2. **Color Coding**: Verde para ganancias, rojo para pérdidas
-3. **Animation**: Transición suave cuando llega nuevo quote
-4. **Price Impact**: Mostrar impacto del precio si está disponible
-5. **Refresh**: Botón para solicitar quote actualizado
+1. **Card Layout**: Display quote in a highlighted card
+2. **Color Coding**: Green for gains, red for losses
+3. **Animation**: Smooth transition when new quote arrives
+4. **Price Impact**: Display price impact if available
+5. **Refresh**: Button to request updated quote
 
 ## 📱 Responsive Design
 
@@ -245,9 +245,9 @@ const handleExecuteSwap = (quote: SwapQuote) => {
 }
 ```
 
-## 🔧 Detectar Palabras Clave
+## 🔧 Detect Keywords
 
-El sistema detecta automáticamente estos patrones para generar `SWAP_QUOTE`:
+The system automatically detects these patterns to generate `SWAP_QUOTE`:
 
 - "quote swap X to Y"
 - "how much Y for X"
@@ -255,4 +255,4 @@ El sistema detecta automáticamente estos patrones para generar `SWAP_QUOTE`:
 - "price of X in Y"
 - "swap quote"
 
-¡Los datos estructurados harán que tu frontend de trading sea mucho más profesional y fácil de usar! 🚀
+The structured data will make your trading frontend much more professional and easier to use! 🚀

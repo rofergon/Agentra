@@ -2,7 +2,16 @@
 
 ## 📋 Project Description
 
-An artificial intelligence agent specialized in the Hedera Hashgraph DeFi ecosystem that helps both novice and experienced users navigate and optimize their investments in decentralized finance protocols. The agent uses real-time analysis of multiple DeFi platforms to identify the best yield opportunities.
+An artificial intelligence agent specialized in the Hedera Hashgraph DeFi ecosystem that helps both novice and experienced users navigate and optimize their investments through integrated SaucerSwap DEX operations, Bonzo Finance lending protocols, and advanced AutoSwapLimit trading strategies. The agent provides real-time analysis and automated execution capabilities.
+
+## 🚀 Quick Access
+
+| 🔗 **Quick Navigation** | 📂 **Path** | 📄 **Description** |
+|------------------------|-------------|-------------------|
+| 🏦 **DeFi Tools** | [typescript/src/shared/tools/defi/](typescript/src/shared/tools/defi/) | Complete DeFi integration suite |
+| 🤖 **WebSocket Agent** | [typescript/examples/langchain/websocket-agent.ts](typescript/examples/langchain/websocket-agent.ts) | Main AI agent server |
+| 🔧 **Message Handlers** | [typescript/examples/langchain/handlers/](typescript/examples/langchain/handlers/) | WebSocket message processing |
+| 📊 **Examples** | [typescript/examples/](typescript/examples/) | Implementation examples |
 
 
 
@@ -23,7 +32,7 @@ An artificial intelligence agent specialized in the Hedera Hashgraph DeFi ecosys
 ## 💡 How It Solves the Problem
 
 ### 🤖 Intelligent AI Agent
-- **Automated analysis**: Continuous monitoring of multiple DeFi protocols on Hedera
+- **Automated analysis**: Continuous monitoring of SaucerSwap, Bonzo Finance, and AutoSwapLimit
 - **Personalized recommendations**: Suggestions based on the user's risk profile and objectives
 - **Conversational interface**: Natural interaction via WebSocket for real-time queries
 - **Persistent context**: Conversation memory that maintains session context
@@ -36,86 +45,175 @@ An artificial intelligence agent specialized in the Hedera Hashgraph DeFi ecosys
 - **Intelligent rate limiting**: Optimized request management to avoid limitations
 - **Smart cache**: 30-second cache system to optimize performance
 
-### 🏦 Supported DeFi Platforms
+### 🏦 Integrated DeFi Platforms
 
 #### 🥇 SaucerSwap
 - **Type**: DEX with AMM (Automated Market Maker)
-- **Yield Features**: 
-  - Token swaps
-  - Liquidity provision
-  - Yield farming
-  - Single-sided staking (Infinity Pools, Community Pools)
-  - Rewards in SAUCE tokens
+- **Features**: 
+  - Token swap quotes and execution
+  - Real-time price discovery
+  - Single-sided staking (Infinity Pools)
+  - Liquidity analysis
+  - Advanced trading with AutoSwapLimit orders
 - **Dominance**: +44% of total Hedera DeFi TVL and +60% of unique active wallets
-
-#### 🔄 HeliSwap
-- **Type**: Native Hedera DEX (Uniswap v2 style)
-- **Yield Features**:
-  - LP token staking
-  - Liquidity mining rewards in HELI and HBAR
-  - Support for HTS, ERC-20, wrapped HBAR
-- **Growth**: TVL increased ~355% quarterly up to Q4 2024 (~$6.6M)
-
-#### 🏛️ Stader Labs
-- **Type**: Liquid staking provider for HBAR
-- **Yield Features**:
-  - Stake HBAR → receive HBARX (rebasing token)
-  - Maintains liquidity while earning staking rewards
-  - 10% fee on rewards
-  - Unstaking requires ~1 day
-- **TVL**: ~47% of total Hedera DeFi TVL by end of 2024
 
 #### 💰 Bonzo Finance
 - **Type**: Lending & borrowing protocol (Aave V2 fork)
-- **Yield Features**:
+- **Features**:
   - Supply assets to earn interest
-  - Loans enabled after TVL threshold
+  - Real-time lending rates monitoring
+  - Portfolio analysis and optimization
+  - Risk assessment tools
 - **TVL**: Steady growth post-launch (~$25M in Q4 2024, later ~$38M)
 
-#### 🧠 Sirio Finance
-- **Type**: Lending & borrowing protocol with AI integration
-- **Yield Features**:
-  - Similar to Bonzo but at a smaller scale
-  - First AI-powered protocol on Hedera
-- **Current TVL**: ~$28.8K (emerging protocol)
-
-#### 🏦 HLiquity
-- **Type**: Interest-free lending protocol using HBAR as collateral
-- **Yield Features**:
-  - HCHF loans (stablecoin pegged to Swiss franc)
-  - HLQT tokens via staking in Stability Pool
+#### 🎯 AutoSwapLimit (SaucerSwap Integration)
+- **Type**: Advanced limit order system
+- **Features**:
+  - Automated limit orders execution
+  - Price monitoring and alerts
+  - Order management and cancellation
+  - Strategic trading automation
 
 ## 🛠️ Technical Architecture
 
-### 🔌 WebSocket Communication
-- **Persistent connections**: Real-time bidirectional communication
-- **User authentication**: Each user maintains their own session with account ID
-- **Transaction management**: Transaction signing outside the agent for maximum security
+### 🔄 Agent Flow Diagram
 
-### 🧰 Integrated Tools
-- **Hedera Native**: HTS, HCS, transfers, balance queries
-- **DeFi Analytics**: Real-time market data, account positions
-- **Memory Management**: Persistent conversation context per user
+```mermaid
+graph TD
+    A[Client conecta WebSocket] --> B{Tipo de mensaje}
+    
+    B -->|CONNECTION_AUTH| C[Autenticar Usuario]
+    C --> D[Crear Conexión de Usuario]
+    D --> E[Inicializar Agente LLM]
+    E --> F[Cargar Hedera Tools]
+    F --> G[Cargar DeFi Tools]
+    G --> H[Usuario Autenticado ✅]
+    
+    B -->|USER_MESSAGE| I[Procesar Mensaje del Usuario]
+    I --> J[Verificar Autenticación]
+    J --> K{¿Usuario Autenticado?}
+    K -->|No| L[Enviar Error de Autenticación]
+    K -->|Sí| M[Cargar Memoria de Conversación]
+    M --> N[Ejecutar Agente LLM]
+    N --> O[Agente analiza mensaje con herramientas]
+    
+    O --> P{¿Tipo de respuesta?}
+    P -->|Respuesta de texto| Q[AGENT_RESPONSE]
+    P -->|Transacción requerida| R[TRANSACTION_TO_SIGN]
+    P -->|Quote de intercambio| S[SWAP_QUOTE]
+    P -->|Mensaje del sistema| T[SYSTEM_MESSAGE]
+    
+    Q --> U[Enviar respuesta al cliente]
+    R --> V[Cliente firma transacción]
+    S --> W[Mostrar cotización estructurada]
+    T --> X[Mostrar mensaje del sistema]
+    
+    V --> Y[TRANSACTION_RESULT]
+    B -->|TRANSACTION_RESULT| Z[Procesar resultado de transacción]
+    Z --> AA[Actualizar estado del agente]
+    AA --> U
+    
+    G --> BB[DeFi Tools Loading]
+    BB --> CC[🏦 Bonzo Finance<br/>- Lending/Borrowing<br/>- Portfolio Analysis<br/>- Interest Rates]
+    BB --> DD[🥇 SaucerSwap<br/>- Token Swaps<br/>- Liquidity Pools<br/>- Price Quotes]
+    BB --> EE[🎯 AutoSwapLimit<br/>- Limit Orders<br/>- Order Management<br/>- Trading Automation]
+    BB --> FF[📊 Analytics<br/>- Real-time Data<br/>- Account Balances<br/>- Market Monitoring]
+    
+    CC --> GG[Hedera Native Tools]
+    DD --> GG
+    EE --> GG
+    FF --> GG
+    
+    GG --> HH[🔗 HTS - Token Operations<br/>🗣️ HCS - Consensus Messages<br/>💰 HBAR - Transfers & Balances<br/>📋 Account Queries]
+```
 
-### 📡 Supported Message Types
-- `CONNECTION_AUTH`: User authentication
-- `USER_MESSAGE`: User queries to the agent
-- `AGENT_RESPONSE`: Agent responses with analysis
-- `TRANSACTION_TO_SIGN`: Transactions requiring signature
-- `TRANSACTION_RESULT`: Confirmation of executed transactions
-- `SYSTEM_MESSAGE`: System messages (info, errors, warnings)
+### 🔌 WebSocket Communication Flow
+
+1. **Connection Establishment**: Client connects to WebSocket server
+2. **Authentication**: User sends `CONNECTION_AUTH` with their Hedera account ID
+3. **Agent Initialization**: System creates personalized agent with tools and memory
+4. **Message Processing**: Agent processes user queries using integrated DeFi and Hedera tools
+5. **Response Generation**: AI generates responses, quotes, or transaction requests
+6. **Transaction Handling**: Client signs transactions externally, reports results back
+
+### 🧰 Integrated Tools Architecture
+
+#### **🏦 DeFi Tools Suite** → [📂 Browse DeFi Tools](typescript/src/shared/tools/defi/)
+
+- **[Bonzo Finance](typescript/src/shared/tools/defi/bonzo/)**: Lending & borrowing protocol integration
+- **[SaucerSwap API](typescript/src/shared/tools/defi/saucerswap-api/)**: DEX market data and analytics
+- **[SaucerSwap Quote](typescript/src/shared/tools/defi/SaucerSwap-Quote/)**: Real-time swap price quotes
+- **[SaucerSwap Router](typescript/src/shared/tools/defi/Saucer-Swap/)**: Swap execution tools
+- **[Infinity Pools](typescript/src/shared/tools/defi/SaucerSwap-InfinityPool/)**: Single-sided staking
+- **[AutoSwapLimit](typescript/src/shared/tools/defi/autoswap-limit/)**: Advanced limit order system
+- **[AutoSwap Queries](typescript/src/shared/tools/defi/autoswap-limit-queries/)**: Order monitoring tools
+
+#### **🔗 Hedera Native Tools**
+- **HTS (Hedera Token Service)**: Token operations and management
+- **HCS (Hedera Consensus Service)**: Messaging and consensus
+- **HBAR Operations**: Transfers, balance queries, account management
+- **Account Queries**: Real-time account information and token balances
+
+### 📡 WebSocket Message Types
+
+| Message Type | Direction | Purpose |
+|-------------|-----------|---------|
+| `CONNECTION_AUTH` | Client → Agent | User authentication with account ID |
+| `USER_MESSAGE` | Client → Agent | User queries and instructions |
+| `AGENT_RESPONSE` | Agent → Client | AI-generated text responses |
+| `SWAP_QUOTE` | Agent → Client | Structured swap quotation data |
+| `TRANSACTION_TO_SIGN` | Agent → Client | Transaction bytes requiring signature |
+| `TRANSACTION_RESULT` | Client → Agent | Signed transaction confirmation |
+| `SYSTEM_MESSAGE` | Agent → Client | System notifications and errors |
+
+### 🧠 Memory Management
+- **Persistent Context**: Each user maintains conversation history
+- **Token Management**: Intelligent memory pruning to optimize performance
+- **Session Isolation**: Each WebSocket connection has independent context
+- **Auto Cleanup**: Memory cleared on disconnection
+
+### 🤖 How the Agent Works
+
+The Hedera DeFi AI Agent operates as an intelligent middleware between users and the Hedera DeFi ecosystem:
+
+1. **🔐 Authentication**: Users authenticate with their Hedera account ID
+2. **🧠 Personalization**: Each user gets a dedicated agent instance with memory
+3. **🔧 Tool Loading**: Agent loads 25+ specialized tools for DeFi operations
+4. **💬 Natural Language**: Users interact in plain language - no technical knowledge required
+5. **🎯 Intelligent Routing**: AI determines which tools to use based on user intent
+6. **📊 Real-time Data**: Tools fetch live data from protocols and mirror nodes
+7. **⚡ Smart Execution**: Multi-step operations handled automatically
+8. **🔒 Secure Transactions**: Users sign transactions on their side - agent never holds keys
+
+#### **Example User Journey:**
+```
+User: "Show me the best yield opportunities on SaucerSwap"
+├── Agent analyzes intent: yield opportunities + SaucerSwap
+├── Calls SaucerSwap API tools for pool data
+├── Calls Infinity Pool tools for staking rewards
+├── Processes and ranks opportunities
+└── Returns formatted analysis with APYs and risks
+
+User: "Set up a limit order to sell 1000 SAUCE at $0.15"
+├── Agent processes: limit order + SAUCE + price target
+├── Calls AutoSwapLimit tools to prepare order
+├── Generates transaction bytes
+├── Sends TRANSACTION_TO_SIGN message
+├── User signs transaction externally
+└── Agent confirms order creation
+```
 
 ## 🎯 Use Cases
 
 ### For Novice Users:
-- "What are the best staking options on Hedera?"
-- "Explain what yield farming is and where I can do it"
-- "Which protocol is safest to start with?"
+- "What are the best yield opportunities on SaucerSwap?"
+- "How does lending work on Bonzo Finance?"
+- "What are limit orders and how can I use them?"
 
 ### For Experienced Users:
-- "Show me the highest APYs available now"
-- "Compare arbitrage opportunities between SaucerSwap and HeliSwap"
-- "What is the best strategy for $10,000 with high risk tolerance?"
+- "Show me the best APYs between SaucerSwap and Bonzo Finance"
+- "Set up automated limit orders for my trading strategy"
+- "Analyze my current positions across SaucerSwap and Bonzo"
 
 ## 🚀 Key Benefits
 
@@ -127,11 +225,12 @@ An artificial intelligence agent specialized in the Hedera Hashgraph DeFi ecosys
 
 ## 🔜 Future Roadmap
 
-- **Integration of more protocols**: Expansion to new DeFi protocols on Hedera
-- **Smart alerts**: Automatic notifications about yield opportunities
-- **Automated strategies**: Automatic execution of pre-configured strategies
+- **Enhanced SaucerSwap features**: Advanced liquidity pool analytics and farming optimization
+- **Expanded Bonzo Finance tools**: Liquidation monitoring and advanced lending strategies  
+- **AutoSwapLimit improvements**: More sophisticated order types and execution algorithms
+- **Smart alerts**: Automatic notifications about yield opportunities and price targets
 - **Web dashboard**: Graphical interface complementing the conversational agent
-- **Predictive analysis**: ML to predict market trends and opportunities
+- **Integration of additional protocols**: HeliSwap, Stader Labs, and other emerging Hedera DeFi protocols
 
 
 ## 🚀 Quick Start

@@ -24,22 +24,36 @@ export const createAutoSwapLimitLangchainTool = (
 ) => {
   return new DynamicStructuredTool({
     name: AUTOSWAP_LIMIT_TOOL,
-    description: `Create and manage limit orders on AutoSwapLimit contract for automated token swaps.
+    description: `🎯 Create and manage limit orders on AutoSwapLimit contract for automated HBAR→Token swaps.
 
-Available operations:
-- Create Swap Order: Create a new limit order to swap HBAR for tokens at a specific price
-- Get Order Details: Retrieve details of a specific order by ID
-- Get Contract Config: Get contract configuration (fees, minimum amounts, etc.)
-- Get Router Info: Get router and token addresses used by the contract
-- Get Contract Balance: Get current HBAR balance of the contract
-- Get Next Order ID: Get the next available order ID
+📋 Available operations:
+- create_swap_order: Create automated limit order (HBAR→Token at specific price)
+- get_order_details: Query order status by ID
+- get_contract_config: View contract settings and fees
+- get_router_info: Get SaucerSwap router information
+- get_contract_balance: Check contract HBAR balance
+- get_next_order_id: Get next available order ID
 
-Supported tokens: SAUCE, WHBAR, and other Hedera tokens
-Network: ${process.env.HEDERA_NETWORK || 'mainnet'}
-User Account: ${userAccountId}
+🪙 Supported tokens: SAUCE, WHBAR, and other Hedera tokens
+🌐 Network: ${process.env.HEDERA_NETWORK || 'mainnet'}
+👤 User Account: ${userAccountId}
 
-Example: Create a limit order to buy SAUCE when price drops to 0.001 HBAR per SAUCE
-Parameters: tokenOut="SAUCE", amountIn=0.5, minAmountOut="1", triggerPrice="1000"`,
+✅ WORKING EXAMPLE (Based on successful test):
+💰 Buy SAUCE tokens with conservative settings:
+  - tokenOut: "SAUCE" (target token to buy)
+  - amountIn: 0.2 (HBAR amount to spend)
+  - minAmountOut: "1" (minimum SAUCE in wei - ultra conservative)
+  - triggerPrice: "1" (trigger price in wei - ultra low)
+  - expirationHours: 24 (expires in 24 hours)
+
+📝 Parameter Details:
+- tokenOut: Token symbol ("SAUCE") or ID ("0.0.731861")
+- amountIn: HBAR amount in decimal (e.g., 0.2 for 0.2 HBAR)
+- minAmountOut: Minimum tokens in wei format ("1" = almost any amount)
+- triggerPrice: Price trigger in wei format ("1" = ultra low trigger)
+- expirationHours: 1-168 hours (default: 24)
+
+⚠️ Note: Use conservative values for testnet due to limited liquidity`,
     
     schema: z.object({
       operation: z.enum([
