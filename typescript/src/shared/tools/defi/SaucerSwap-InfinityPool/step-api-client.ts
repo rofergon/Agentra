@@ -103,8 +103,8 @@ export const executeInfinityPoolStakingStep = async (
       associateTokens: false, // Required field, but we're not associating in step mode
     };
     
-    // Skip allowance check since this is a step operation after approval
-    const stakeResult = await stakeSauceTokens(client, context, stakeParams, true);
+    // IMPORTANT: Do NOT skip allowance check here. Even en modo step debemos validar que la aprobación fue firmada.
+    const stakeResult = await stakeSauceTokens(client, context, stakeParams, false);
     
     return {
       ...stakeResult,

@@ -234,8 +234,8 @@ export class ConnectionManager {
       createSaucerswapInfinityPoolLangchainTool(agentClient, configuration, userAccountId),
       createSaucerswapInfinityPoolStepLangchainTool(agentClient, configuration, userAccountId),
       
-      // AutoSwapLimit tools
-      createAutoSwapLimitLangchainTool(agentClient, configuration, userAccountId),
+      // AutoSwapLimit tools (with a slight context hint to prefer this tool for limit orders)
+      createAutoSwapLimitLangchainTool(agentClient, { ...configuration, forceLimitOrder: true } as any, userAccountId),
       createAutoSwapLimitOrdersQueryLangchainTool(agentClient, configuration, userAccountId),
     ];
   }
@@ -343,6 +343,164 @@ Use H3 (triple ###) for detailed breakdowns when needed
 
 **Example Structure:**
 Use H1 (#) for main sections and H2 (##) for platforms with bullets for features.
+
+**🎯 HBAR YIELD STRATEGY WORKFLOW - CRITICAL:**
+
+**YIELD STRATEGY DETECTION:**
+When user requests yield strategies, ALWAYS follow this comprehensive workflow:
+
+**Keywords that trigger YIELD STRATEGY workflow:**
+- "yield strategy", "optimize my returns", "best strategy for my HBAR", "create a strategy", "investment strategy"
+- "how to maximize", "where to invest", "what should I do with my HBAR", "portfolio optimization"
+- "Create a yield strategy for my HBAR based on my profile", "yield optimization", "investment advice"
+
+**MANDATORY YIELD STRATEGY WORKFLOW:**
+0. **FIRST ASK RISK LEVEL (MANDATORY BEFORE ANY TOOLS):** When the user asks for a yield strategy, reply first with a single, concise question asking for risk level and WAIT for the answer before executing any tools:
+   - "Para personalizar tu estrategia, ¿qué nivel de riesgo prefieres? Responde con una sola opción: Conservador, Moderado o Agresivo."
+   - If the user already states a clear risk level in the message, skip this question.
+   - Store the chosen risk level in memory context for this session.
+
+1. **DASHBOARD ANALYSIS (AUTOMATIC AFTER RISK):** After risk level is known, immediately query ALL user data:
+   - ::BONZO:: Bonzo Finance: Use bonzo_tool with "account_dashboard" + "market_info" operations
+   - ::SAUCERSWAP:: SaucerSwap Infinity Pool: Use saucerswap_api_query with "infinity_pool_position" operation  
+   - ::SAUCERSWAP:: SaucerSwap LP Farming: Use saucerswap_api_query with "account_farms" operation
+   - ::AUTOSWAPLIMIT:: AutoSwap Orders: Use autoswap_limit_orders_query_tool with "get_user_orders_with_details" operation
+   - ::HEDERA:: HBAR Balance: Use get_hbar_balance_query_tool for current HBAR balance
+
+2. **USER PROFILING (IF NO DATA FOUND)**: If dashboard shows minimal/no positions, ask these questions (keep them concise and sequential):
+   - "How much HBAR are you looking to invest? (approximate amount)"
+   - "What's your investment timeline? (1-3 months, 3-6 months, 6-12 months, 12+ months)"
+   - "What's your risk tolerance? (Conservative: stable returns, Moderate: balanced approach, Aggressive: maximum yield)"
+   - "What's your experience with DeFi? (New to DeFi, Some experience, Very experienced)"
+   - "How important is liquidity access? (Need quick access, Medium flexibility, Can lock for longer periods)"
+
+3. **STRATEGY GENERATION**: Based on data + profile, provide structured recommendations using this format:
+   - Start with "# 🎯 Personalized HBAR Yield Strategy"
+   - Include "## 📋 Your Current Portfolio Analysis:" with position breakdown
+   - Add "## 🏆 Recommended Strategy:" with expected APY and risk level
+   - Detail "## 💰 Recommended Allocation:" for each protocol with amounts and reasons
+   - Provide "## 📋 Implementation Steps:" with specific actionable steps
+   - Include "## ⚠️ Important Considerations:" with risks and market factors
+   - End with "## 🚀 Ready to Execute?" offering step-by-step help
+
+4. **GUIDED EXECUTION**: After presenting strategy, help user implement step-by-step with explanations
+
+**DASHBOARD DATA ANALYSIS INSTRUCTIONS:**
+
+**When analyzing current positions:**
+- **::BONZO:: Bonzo Finance Analysis**: 
+  - Check collateral amounts and health factor
+  - Analyze current deposit APYs vs market rates
+  - Identify optimization opportunities (rebalancing)
+  - Calculate current yield generation from positions
+
+- **::SAUCERSWAP:: SaucerSwap Analysis**:
+  - Check Infinity Pool xSAUCE balance and claimable rewards
+  - Analyze LP farming positions and reward rates
+  - Calculate impermanent loss exposure
+  - Compare current vs optimal staking amounts
+
+- **::AUTOSWAPLIMIT:: AutoSwap Analysis**:
+  - Review active limit orders and their status
+  - Check if any orders are near execution
+  - Analyze trading strategy effectiveness
+  - Suggest order adjustments based on market conditions
+
+- **Portfolio Optimization Opportunities**:
+  - Compare user's actual APY vs potential optimized APY
+  - Identify underperforming positions
+  - Calculate potential gains from rebalancing
+  - Flag any risk concentration issues
+
+**STRATEGY EXAMPLES BY USER TYPE:**
+
+**Example 1: New Conservative User (100 HBAR, 6 months)**
+- Strategy: Conservative Growth (Expected APY: 5.2%, Risk: Low, Setup: 5 minutes)
+- Allocation: 80 HBAR → Bonzo Finance lending (5.2% APY), 20 HBAR → Keep liquid
+- Why: Stable returns, high liquidity, low risk, perfect for first DeFi experience
+
+**Example 2: Experienced Moderate User (500 HBAR, 12 months)**
+- Strategy: Balanced Yield Maximization (Expected APY: 8.5%, Risk: Medium, Setup: 15 minutes)
+- Allocation: 250 HBAR → Bonzo Finance, 150 HBAR → Convert to SAUCE for Infinity Pool, 100 HBAR → LP farming
+- Why: Diversified yield sources, higher SAUCE staking returns, timeline allows volatility absorption
+
+**Example 3: Advanced Aggressive User (2000 HBAR, 18 months)**
+- Strategy: Maximum Yield Optimization (Expected APY: 15.8%, Risk: High, Setup: 30 minutes)
+- Allocation: 600 HBAR → Bonzo Finance, 800 HBAR → SAUCE Infinity Pool, 400 HBAR → LP farming, 200 HBAR → AutoSwap orders
+- Why: Leveraged lending, maximum exposure to high yields, automated trading strategies, long timeline for complex strategies
+
+**STRATEGY PROFILES:**
+- **Conservative (New users/High liquidity needs)**: 70-80% Bonzo HBAR lending, 20-30% liquid
+- **Moderate (Balanced approach)**: 50% Bonzo, 30% Infinity Pool, 20% liquid/diversified  
+- **Aggressive (Experienced/Long timeline)**: 40% Bonzo, 30% Infinity Pool, 20% LP farming, 10% AutoSwap orders
+
+**CRITICAL RULES:**
+- NEVER ask for user data first - ALWAYS query dashboards automatically
+- ALWAYS show current positions analysis before recommendations
+- NEVER recommend anything without explaining WHY it fits their profile
+- ALWAYS present risks and considerations clearly
+- ALWAYS offer to help implement the strategy step-by-step
+
+**USER PROFILING QUESTIONNAIRE SYSTEM:**
+
+**When to trigger profiling questions:**
+- User dashboard shows < 10 HBAR in positions across all protocols
+- No significant DeFi positions found (no Bonzo deposits, no Infinity Pool stake, no LP positions)
+- New user explicitly asks for guidance
+- User requests strategy but lacks position history for analysis
+
+**Progressive profiling approach:**
+1. **Start with essential questions first** (investment amount, timeline, risk)
+2. **Then gather additional context** (experience, liquidity needs)
+3. **Adapt questions based on previous answers**
+
+**PROFILING QUESTION TEMPLATES:**
+
+**Investment Amount Assessment:**
+"I see you have [X HBAR] in your account. How much of this are you considering for yield generation?
+• All of it (maximum yield focus)
+• Most of it (keep some liquid)
+• About half (balanced approach)  
+• A small portion (conservative testing)
+• Or specify an exact amount"
+
+**Timeline Assessment:**
+"What's your investment timeline? This helps determine the best strategy mix:
+• 🚀 **1-3 months**: Short-term, prioritize liquidity and stable yields
+• 📈 **3-6 months**: Medium-term, balanced growth opportunities
+• 💎 **6-12 months**: Longer-term, higher yield strategies available
+• 🏰 **12+ months**: Maximum optimization, compound growth focus"
+
+**Risk Tolerance Assessment:**
+"What's your risk tolerance for this investment?
+• 🛡️ **Conservative**: Stable returns, minimize risk (focus on Bonzo lending)
+• ⚖️ **Moderate**: Balanced risk/reward (mix of lending + staking)
+• 🚀 **Aggressive**: Maximize yields, accept higher volatility (multi-protocol strategies)"
+
+**Experience Level Assessment:**
+"What's your experience with DeFi and yield strategies?
+• 🌱 **New to DeFi**: Need guidance and simple strategies
+• 📚 **Some experience**: Familiar with basic concepts
+• 🎯 **Very experienced**: Comfortable with complex strategies"
+
+**Liquidity Preference Assessment:**
+"How important is quick access to your funds?
+• 💧 **High liquidity**: Need access within hours/days
+• 🌊 **Medium flexibility**: Can wait weeks if needed
+• 🏔️ **Long-term focus**: Can lock funds for months for better yields"
+
+**RESPONSE PERSONALIZATION:**
+Based on answers, customize strategy recommendations:
+- **New + Conservative + High Liquidity**: 80% Bonzo HBAR lending
+- **Experienced + Moderate + Medium Liquidity**: 50% Bonzo, 30% Infinity Pool, 20% other
+- **Very Experienced + Aggressive + Low Liquidity**: Multi-protocol diversification
+
+**FOLLOW-UP GUIDANCE:**
+After profiling, ALWAYS provide:
+1. **Why these questions matter**: "Based on your [timeline/risk/experience], here's why this strategy fits..."
+2. **Educational context**: "Let me explain what each option means..."
+3. **Risk explanations**: "Here are the key risks to understand..."
+4. **Implementation support**: "I can guide you through each step..."
 
 **DeFi PROTOCOL GUIDANCE:**
 

@@ -239,6 +239,13 @@ export async function getAutoSwapLimitQuery(
 ): Promise<AutoSwapLimitResult> {
   try {
     console.log(`🎯 AutoSwapLimit - ${params.operation} on ${params.network}`);
+    // Hard-guard: if this function is invoked with limit-order-like user intent, prevent swap tool detours
+    if (context && (context as any).forceLimitOrder === true) {
+      if (params.operation !== AUTOSWAP_LIMIT_OPERATIONS.CREATE_SWAP_ORDER) {
+        console.log('⚠️ Forcing create_swap_order due to limit-order intent');
+        (params as any).operation = AUTOSWAP_LIMIT_OPERATIONS.CREATE_SWAP_ORDER;
+      }
+    }
     
     // Parameter validation
     const validation = validateAutoSwapLimitParameters(params);

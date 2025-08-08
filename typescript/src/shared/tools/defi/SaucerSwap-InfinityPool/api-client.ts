@@ -719,23 +719,30 @@ export const stakeSauceTokens = async (
       if (allowanceCheck.needsApproval) {
         console.log(`⚠️ Insufficient allowance! Current: ${allowanceCheck.currentAllowance}, Required: ${normalizedParams.sauceAmountInSmallestUnits}`);
         
-        // In RETURN_BYTES mode, return a message indicating approval is needed rather than executing it
+        // In RETURN_BYTES mode: prepare approval transaction immediately (one TX at a time)
         if (context.mode === 'returnBytes') {
           console.log(`⚠️ Cannot stake: SAUCE approval required first`);
-          
-          return {
-            step: 'approval_required',
-            operation: 'stake_sauce_blocked',
-            success: false,
-            message: `❌ Cannot stake SAUCE: Approval required first. Current allowance: ${allowanceCheck.currentAllowance}, Required: ${normalizedParams.sauceAmountInSmallestUnits}`,
-            suggestion: 'Please execute approve_sauce operation first, then retry staking',
-            currentAllowance: allowanceCheck.currentAllowance,
-            requiredAmount: normalizedParams.sauceAmountInSmallestUnits,
-          };
-        } else {
-          // Direct mode - throw error
-          throw new Error(`Insufficient SAUCE allowance. Current: ${allowanceCheck.currentAllowance}, Required: ${normalizedParams.sauceAmountInSmallestUnits}. Please approve SAUCE tokens first.`);
+          // Prepare approval transaction with original params to ensure next step is stake
+          const approvalParams = {
+            userAccountId: normalizedParams.userAccountId,
+            amount: normalizedParams.sauceAmountInSmallestUnits,
+            originalParams: {
+              operation: INFINITY_POOL_OPERATIONS.APPROVE_SAUCE,
+              approveAmount: Number(params.sauceAmount),
+              associateTokens: false,
+              userAccountId: normalizedParams.userAccountId,
+            },
+          } as const;
+
+          const approvalTx = await approveSauceForMotherShip(client, context, approvalParams);
+          // Return immediately so frontend signs approval; extractor will set pending step to stake
+          return approvalTx;
         }
+
+        // Direct mode - throw error
+        throw new Error(
+          `Insufficient SAUCE allowance. Current: ${allowanceCheck.currentAllowance}, Required: ${normalizedParams.sauceAmountInSmallestUnits}. Please approve SAUCE tokens first.`,
+        );
       }
       
       console.log(`✅ Sufficient SAUCE allowance confirmed: ${allowanceCheck.currentAllowance}`);

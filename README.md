@@ -1,5 +1,15 @@
 # Hedera DeFi AI Agent 🚀
 
+## 🔗 Related Repositories
+
+- **Frontend**: [Hedron Frontend](https://github.com/rofergon/Hedron_Frontend) - User interface for the Hedera DeFi AI Agent
+- **AutoSwapLimit Contract**: [AutomationSwapLimit](https://github.com/rofergon/AutomationSwapLimit) - Intermediate contract for limit orders
+
+## 📜 Deployed Contracts
+
+- **MockPriceOracle**: [0.0.6506125](https://hashscan.io/testnet/contract/0.0.6506125)
+- **AutoSwapLimit**: [0.0.6506134](https://hashscan.io/testnet/contract/0.0.6506134)
+
 ## 📋 Project Description
 
 An artificial intelligence agent specialized in the Hedera Hashgraph DeFi ecosystem that helps both novice and experienced users navigate and optimize their investments through integrated SaucerSwap DEX operations, Bonzo Finance lending protocols, and advanced AutoSwapLimit trading strategies. The agent provides real-time analysis and automated execution capabilities.
@@ -203,34 +213,6 @@ User: "Set up a limit order to sell 1000 SAUCE at $0.15"
 └── Agent confirms order creation
 ```
 
-## 🎯 Use Cases
-
-### For Novice Users:
-- "What are the best yield opportunities on SaucerSwap?"
-- "How does lending work on Bonzo Finance?"
-- "What are limit orders and how can I use them?"
-
-### For Experienced Users:
-- "Show me the best APYs between SaucerSwap and Bonzo Finance"
-- "Set up automated limit orders for my trading strategy"
-- "Analyze my current positions across SaucerSwap and Bonzo"
-
-## 🚀 Key Benefits
-
-- **⏱️ Time Savings**: Automated analysis instead of manual research
-- **📈 Maximized Yields**: Identification of the best opportunities
-- **🛡️ Risk Reduction**: Comparative analysis of protocols and strategies
-- **🎓 Continuous Education**: Learn about DeFi through natural interactions
-- **🔐 Security**: Does not custody funds, only provides analysis and recommendations
-
-## 🔜 Future Roadmap
-
-- **Enhanced SaucerSwap features**: Advanced liquidity pool analytics and farming optimization
-- **Expanded Bonzo Finance tools**: Liquidation monitoring and advanced lending strategies  
-- **AutoSwapLimit improvements**: More sophisticated order types and execution algorithms
-- **Smart alerts**: Automatic notifications about yield opportunities and price targets
-- **Web dashboard**: Graphical interface complementing the conversational agent
-- **Integration of additional protocols**: HeliSwap, Stader Labs, and other emerging Hedera DeFi protocols
 
 
 ## 🚀 Quick Start

@@ -84,6 +84,16 @@ export interface UserConnection {
   agentExecutor: AgentExecutor;
   memory: BufferMemory;
   pendingStep?: PendingStep; // Track multi-step flows
+  // Track the last prepared operation context to emit a final summary upon confirmation
+  lastPreparedOperation?: {
+    tool?: string;
+    protocol?: string;
+    operation?: string;
+    step?: string;
+    originalParams?: any;
+    amountLabel?: string; // e.g. "5000 SAUCE"
+    tokenIds?: string[];
+  };
 }
 
 // Constants
