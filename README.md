@@ -203,34 +203,7 @@ User: "Set up a limit order to sell 1000 SAUCE at $0.15"
 └── Agent confirms order creation
 ```
 
-## 🎯 Use Cases
 
-### For Novice Users:
-- "What are the best yield opportunities on SaucerSwap?"
-- "How does lending work on Bonzo Finance?"
-- "What are limit orders and how can I use them?"
-
-### For Experienced Users:
-- "Show me the best APYs between SaucerSwap and Bonzo Finance"
-- "Set up automated limit orders for my trading strategy"
-- "Analyze my current positions across SaucerSwap and Bonzo"
-
-## 🚀 Key Benefits
-
-- **⏱️ Time Savings**: Automated analysis instead of manual research
-- **📈 Maximized Yields**: Identification of the best opportunities
-- **🛡️ Risk Reduction**: Comparative analysis of protocols and strategies
-- **🎓 Continuous Education**: Learn about DeFi through natural interactions
-- **🔐 Security**: Does not custody funds, only provides analysis and recommendations
-
-## 🔜 Future Roadmap
-
-- **Enhanced SaucerSwap features**: Advanced liquidity pool analytics and farming optimization
-- **Expanded Bonzo Finance tools**: Liquidation monitoring and advanced lending strategies  
-- **AutoSwapLimit improvements**: More sophisticated order types and execution algorithms
-- **Smart alerts**: Automatic notifications about yield opportunities and price targets
-- **Web dashboard**: Graphical interface complementing the conversational agent
-- **Integration of additional protocols**: HeliSwap, Stader Labs, and other emerging Hedera DeFi protocols
 
 
 ## 🚀 Quick Start
