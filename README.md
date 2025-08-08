@@ -1,5 +1,15 @@
 # Hedera DeFi AI Agent 🚀
 
+## 🔗 Related Repositories
+
+- **Frontend**: [Hedron Frontend](https://github.com/rofergon/Hedron_Frontend) - User interface for the Hedera DeFi AI Agent
+- **AutoSwapLimit Contract**: [AutomationSwapLimit](https://github.com/rofergon/AutomationSwapLimit) - Intermediate contract for limit orders
+
+## 📜 Deployed Contracts
+
+- **MockPriceOracle**: [0.0.6506125](https://hashscan.io/testnet/contract/0.0.6506125)
+- **AutoSwapLimit**: [0.0.6506134](https://hashscan.io/testnet/contract/0.0.6506134)
+
 ## 📋 Project Description
 
 An artificial intelligence agent specialized in the Hedera Hashgraph DeFi ecosystem that helps both novice and experienced users navigate and optimize their investments through integrated SaucerSwap DEX operations, Bonzo Finance lending protocols, and advanced AutoSwapLimit trading strategies. The agent provides real-time analysis and automated execution capabilities.
@@ -202,8 +212,6 @@ User: "Set up a limit order to sell 1000 SAUCE at $0.15"
 ├── User signs transaction externally
 └── Agent confirms order creation
 ```
-
-
 
 
 ## 🚀 Quick Start

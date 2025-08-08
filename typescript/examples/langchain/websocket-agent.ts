@@ -19,7 +19,7 @@ const FORCE_CLEAR_MEMORY = process.env.FORCE_CLEAR_MEMORY === 'true';
 // Enhanced LLM Configuration Constants
 const MAX_TOKENS = parseInt(process.env.LLM_MAX_TOKENS || '12000');
 const TEMPERATURE = parseFloat(process.env.LLM_TEMPERATURE || '0.7');
-const MODEL_NAME = process.env.LLM_MODEL || 'gpt-4o-mini';
+const MODEL_NAME = process.env.LLM_MODEL || 'gpt-5-mini';
 
 // Memory Configuration Constants
 const MEMORY_MAX_TOKEN_LIMIT = parseInt(process.env.MEMORY_MAX_TOKEN_LIMIT || '8000');

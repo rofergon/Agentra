@@ -104,8 +104,11 @@ export class MessageHandlers {
         console.error('⚠️ Error reading memory state:', error);
       }
       
+      // Pre-route: detect limit order intent to avoid swap tools misuse
+      const routedInput = this.applyLimitOrderRoutingHints(message.message);
+
       // Process message with user agent
-      const response = await currentConnection.agentExecutor.invoke({ input: message.message });
+      const response = await currentConnection.agentExecutor.invoke({ input: routedInput });
       
       console.log('🤖 Agent:', response?.output ?? response);
 
@@ -113,6 +116,8 @@ export class MessageHandlers {
       const bytes = AgentResponseUtils.extractBytesFromAgentResponse(response);
       const nextStep = AgentResponseUtils.extractNextStepFromAgentResponse(response);
       const swapQuote = AgentResponseUtils.extractSwapQuoteFromAgentResponse(response);
+      const opCtx = AgentResponseUtils.extractOperationContext(response);
+      const preparedTxInfo = AgentResponseUtils.extractPreparedTxInfo(response);
       
       // Check if this is a swap quote and send structured data first
       if (swapQuote) {
@@ -122,7 +127,9 @@ export class MessageHandlers {
       
       if (bytes !== undefined) {
         // There is a transaction to sign
-        const realBytes = Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes.data);
+        // If multiple prepared transactions exist, enforce priority: association -> approval -> others
+        const selectedBytes = preparedTxInfo?.bytes || bytes;
+        const realBytes = Buffer.isBuffer(selectedBytes) ? selectedBytes : Buffer.from(selectedBytes.data);
         
         // Store pending step information for multi-step flows
         if (nextStep) {
@@ -137,6 +144,11 @@ export class MessageHandlers {
           currentConnection.pendingStep = nextStep;
         } else {
           console.log('📝 No next step detected from agent response');
+        }
+
+        // Store last prepared operation context for final summary on confirmation
+        if (opCtx) {
+          currentConnection.lastPreparedOperation = opCtx;
         }
         
         // Send agent response and transaction
@@ -159,6 +171,22 @@ export class MessageHandlers {
       console.error('❌ Error processing user message:', error);
       this.sendSystemMessage(ws, `Error processing your request: ${error.message}`, 'error');
     }
+  }
+
+  /**
+   * Add strong hints to force AutoSwapLimit tool when user intent looks like a limit order
+   */
+  private applyLimitOrderRoutingHints(original: string): string {
+    const text = (original || '').toLowerCase();
+    const hasPriceWord = /(target\s*price|precio\s*objetivo|precio\s*meta|when\s+price|cuando\s+el\s+precio|al\s+precio|\$|usdc|usd|udc)/i.test(original);
+    const hasOrderWord = /(limit\s*order|orden\s*l[ií]mite|program(ar)?\s*orden|set\s*limit)/i.test(original);
+    const hasAtWord = /(at\s+|a\s+\$?\d)/i.test(original);
+
+    if (hasPriceWord || hasOrderWord || hasAtWord) {
+      const hint = `CRITICAL: This is a LIMIT ORDER request. Do NOT use swap quote or swap execution tools. Use ONLY autoswap_limit_tool with operation "create_swap_order". If any parameter is missing (tokenOut, amountIn, minAmountOut, triggerPrice), ask briefly for the missing piece or use minimal safe defaults (minAmountOut="1"). Then return a single transaction for signing if needed.`;
+      return `${hint}\n\nUser: ${original}`;
+    }
+    return original;
   }
 
   /**
@@ -185,6 +213,32 @@ export class MessageHandlers {
         await this.executeNextStep(ws, userConnection);
       } else {
         console.log('🔄 No pending step to execute after transaction confirmation');
+        // When there is no next step, emit a concise final summary as confirmation
+        if (userConnection?.lastPreparedOperation) {
+          const final = userConnection.lastPreparedOperation;
+          // Build short confirmation message per operation
+          let summary = '';
+          if (final.protocol === 'saucerswap') {
+            if (final.operation === 'associate_tokens') {
+              summary = `✅ Tokens associated successfully${final.tokenIds ? `: ${final.tokenIds.join(', ')}` : ''}.`;
+            } else if (final.operation === 'approve_sauce') {
+              summary = `✅ SAUCE approval confirmed${final.amountLabel ? ` (${final.amountLabel})` : ''}.`;
+            } else if (final.operation === 'stake_sauce') {
+              summary = `✅ Staking completed${final.amountLabel ? `: ${final.amountLabel} staked into Infinity Pool` : ''}.`;
+            } else if (final.operation === 'unstake_xsauce') {
+              summary = `✅ Unstaking completed.`;
+            }
+          }
+
+          if (summary) {
+            this.sendMessage(ws, this.createMessage('AGENT_RESPONSE', {
+              message: `# ✅ Operación completada\n\n${summary}`,
+              hasTransaction: false,
+            }));
+          }
+          // Clear the stored context after summarizing
+          userConnection.lastPreparedOperation = undefined;
+        }
       }
     } else {
       console.log('❌ Transaction failed:', message.error);
