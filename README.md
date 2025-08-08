@@ -21,7 +21,7 @@ An artificial intelligence agent specialized in the Hedera Hashgraph DeFi ecosys
 | 🏦 **DeFi Tools** | [typescript/src/shared/tools/defi/](typescript/src/shared/tools/defi/) | Complete DeFi integration suite |
 | 🤖 **WebSocket Agent** | [typescript/examples/langchain/websocket-agent.ts](typescript/examples/langchain/websocket-agent.ts) | Main AI agent server |
 | 🔧 **Message Handlers** | [typescript/examples/langchain/handlers/](typescript/examples/langchain/handlers/) | WebSocket message processing |
-| 📊 **Examples** | [typescript/examples/](typescript/examples/) | Implementation examples |
+
 
 
 
@@ -212,7 +212,6 @@ User: "Set up a limit order to sell 1000 SAUCE at $0.15"
 ├── User signs transaction externally
 └── Agent confirms order creation
 ```
-
 
 
 ## 🚀 Quick Start
