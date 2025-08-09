@@ -208,7 +208,7 @@ const status = await ordersQueryTool.invoke({
 // 1. Stake SAUCE for xSAUCE
 await infinityPoolTool.invoke({
   operation: 'full_stake_flow',
-  amountSauce: '100'
+  sauceAmount: 100
 });
 
 // 2. Deposit HBAR into Bonzo Finance
@@ -345,6 +345,7 @@ For detailed documentation on specific tools:
 
 - [SaucerSwap Quote Tool](./SaucerSwap-Quote/README.md)
 - [SaucerSwap Swap Tool](./Saucer-Swap/UniswapV2Router02%20README.md)
+- [SaucerSwap Infinity Pool Tool](./SaucerSwap-InfinityPool/README.md)
 - [Bonzo Finance Transactions](./bonzoTransaction/Bonzo%20Finance%20Transaction%20README.md)
 - [AutoSwapLimit Orders Query](./autoswap-limit-queries/README.md)
 
