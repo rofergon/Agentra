@@ -90,37 +90,37 @@ An artificial intelligence agent specialized in the Hedera Hashgraph DeFi ecosys
 
 ```mermaid
 graph TD
-    A[Client conecta WebSocket] --> B{Tipo de mensaje}
+    A[Client connects WebSocket] --> B{Message type}
     
-    B -->|CONNECTION_AUTH| C[Autenticar Usuario]
-    C --> D[Crear Conexión de Usuario]
-    D --> E[Inicializar Agente LLM]
-    E --> F[Cargar Hedera Tools]
-    F --> G[Cargar DeFi Tools]
-    G --> H[Usuario Autenticado ✅]
+    B -->|CONNECTION_AUTH| C[Authenticate User]
+    C --> D[Create User Connection]
+    D --> E[Initialize LLM Agent]
+    E --> F[Load Hedera Tools]
+    F --> G[Load DeFi Tools]
+    G --> H[User Authenticated ✅]
     
-    B -->|USER_MESSAGE| I[Procesar Mensaje del Usuario]
-    I --> J[Verificar Autenticación]
-    J --> K{¿Usuario Autenticado?}
-    K -->|No| L[Enviar Error de Autenticación]
-    K -->|Sí| M[Cargar Memoria de Conversación]
-    M --> N[Ejecutar Agente LLM]
-    N --> O[Agente analiza mensaje con herramientas]
+    B -->|USER_MESSAGE| I[Process User Message]
+    I --> J[Verify Authentication]
+    J --> K{User Authenticated?}
+    K -->|No| L[Send Authentication Error]
+    K -->|Yes| M[Load Conversation Memory]
+    M --> N[Execute LLM Agent]
+    N --> O[Agent analyzes message with tools]
     
-    O --> P{¿Tipo de respuesta?}
-    P -->|Respuesta de texto| Q[AGENT_RESPONSE]
-    P -->|Transacción requerida| R[TRANSACTION_TO_SIGN]
-    P -->|Quote de intercambio| S[SWAP_QUOTE]
-    P -->|Mensaje del sistema| T[SYSTEM_MESSAGE]
+    O --> P{Response type?}
+    P -->|Text response| Q[AGENT_RESPONSE]
+    P -->|Transaction required| R[TRANSACTION_TO_SIGN]
+    P -->|Swap quote| S[SWAP_QUOTE]
+    P -->|System message| T[SYSTEM_MESSAGE]
     
-    Q --> U[Enviar respuesta al cliente]
-    R --> V[Cliente firma transacción]
-    S --> W[Mostrar cotización estructurada]
-    T --> X[Mostrar mensaje del sistema]
+    Q --> U[Send response to client]
+    R --> V[Client signs transaction]
+    S --> W[Show structured quote]
+    T --> X[Show system message]
     
     V --> Y[TRANSACTION_RESULT]
-    B -->|TRANSACTION_RESULT| Z[Procesar resultado de transacción]
-    Z --> AA[Actualizar estado del agente]
+    B -->|TRANSACTION_RESULT| Z[Process transaction result]
+    Z --> AA[Update agent state]
     AA --> U
     
     G --> BB[DeFi Tools Loading]
